@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp"
+    android:background="@color/black">
+
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:accessibilityLiveRegion="polite"
+        android:textColor="@color/yellow" android:textSize="22sp" android:textStyle="bold"
+        android:gravity="center" android:minHeight="48dp" />
+
+    <ScrollView
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:layout_marginTop="8dp" android:layout_marginBottom="8dp">
+        <TextView
+            android:id="@+id/reply"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="@color/white" android:textSize="28sp"
+            android:lineSpacingMultiplier="1.15" android:padding="8dp" />
+    </ScrollView>
+
+    <LinearLayout
+        android:id="@+id/writePanel"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:visibility="gone" android:layout_marginBottom="8dp">
+        <EditText
+            android:id="@+id/input"
+            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:hint="@string/write_hint" android:inputType="textMultiLine|textCapSentences"
+            android:minHeight="56dp" android:textColor="@color/white" android:textColorHint="#BBBBBB"
+            android:textSize="22sp" android:maxLines="4" />
+        <Button
+            android:id="@+id/sendBtn" style="@style/Sentia.BigButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/send" android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/speakBtn" style="@style/Sentia.BigButton"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:text="@string/speak_button" android:textSize="40sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:layout_marginTop="8dp">
+        <Button android:id="@+id/cameraBtn" style="@style/Sentia.BigButton"
+            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="@string/camera_button" android:textSize="18sp" />
+        <Button android:id="@+id/writeBtn" style="@style/Sentia.BigButton"
+            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="@string/write_button" android:textSize="18sp" />
+        <Button android:id="@+id/repeatBtn" style="@style/Sentia.BigButton"
+            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="@string/repeat_button" android:textSize="18sp" />
+    </LinearLayout>
+
+    <Button android:id="@+id/settingsBtn" style="@style/Sentia.BigButton"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/settings_button" android:textSize="18sp" />
+</LinearLayout>

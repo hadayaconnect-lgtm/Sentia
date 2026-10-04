@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Contraste élevé : noir et jaune, grandes cibles tactiles. -->
+    <style name="Theme.Sentia" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/black</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textColorPrimary">@color/white</item>
+        <item name="colorAccent">@color/yellow</item>
+        <item name="colorPrimary">@color/black</item>
+        <item name="android:statusBarColor">@color/black</item>
+        <item name="android:navigationBarColor">@color/black</item>
+    </style>
+    <style name="Sentia.BigButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/btn_bg</item>
+        <item name="android:textColor">@color/black</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:minHeight">72dp</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+    <style name="Sentia.Text" parent="">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+</resources>
