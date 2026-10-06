@@ -21,8 +21,8 @@ class Settings(context: Context) {
 
     /** 0 faible, 1 moyenne, 2 forte. */
     var sensitivity: Int
-        get() = p.getInt("sensitivity", 1)
-        set(v) = p.edit().putInt("sensitivity", v).apply()
+        get() = p.getInt("sens_v2", 2) // « Élevée » par défaut : une personne aveugle ne doit pas avoir à secouer très fort
+        set(v) = p.edit().putInt("sens_v2", v).apply()
 
     var shakeEnabled: Boolean
         get() = p.getBoolean("shake", true)
@@ -56,6 +56,12 @@ class Settings(context: Context) {
     var diagWake: String
         get() = p.getString("d_wake", "") ?: ""
         set(v) = p.edit().putString("d_wake", v).apply()
+    var diagPeak: Float
+        get() = p.getFloat("d_peak", 0f)
+        set(v) = p.edit().putFloat("d_peak", v).apply()
+    var diagSamplesAt: Long
+        get() = p.getLong("d_samples", 0L)
+        set(v) = p.edit().putLong("d_samples", v).apply()
     var diagServiceError: String
         get() = p.getString("d_err", "") ?: ""
         set(v) = p.edit().putString("d_err", v).apply()

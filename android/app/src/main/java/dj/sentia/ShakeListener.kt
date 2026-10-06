@@ -20,6 +20,8 @@ class ShakeListener(private val context: Context) : SensorEventListener {
     private val detector = ShakeDetector()
     private var sensitivity = -1
     private var running = false
+    private var lastDiag = 0L
+    private var peak = 0f
 
     fun start() {
         stop()
@@ -51,7 +53,11 @@ class ShakeListener(private val context: Context) : SensorEventListener {
             Sensor.TYPE_STEP_DETECTOR -> detector.walkingUntilMs = e.timestamp / 1_000_000L + 4000
             Sensor.TYPE_ACCELEROMETER -> {
                 val tsMs = e.timestamp / 1_000_000L
-                if (detector.onSample(tsMs, e.values[0], e.values[1], e.values[2])) {
+                val hit = detector.onSample(tsMs, e.values[0], e.values[1], e.values[2])
+                if (detector.lastMag > peak) peak = detector.lastMag
+                val nowMs = System.currentTimeMillis()
+                if (nowMs - lastDiag > 1000) { lastDiag = nowMs; st.diagSamplesAt = nowMs; st.diagPeak = peak; peak = 0f }
+                if (hit) {
                     st.diagShakeAt = System.currentTimeMillis()
                     WakeController.wake(context, "shake")
                 }

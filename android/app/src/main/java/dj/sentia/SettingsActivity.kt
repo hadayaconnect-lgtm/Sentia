@@ -43,6 +43,7 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var diagStatus: TextView
 
     private var testDetector: ShakeDetector? = null
+    private var testPeak = 0f
 
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { applyAndFinish() }
 
@@ -105,6 +106,7 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
             else -> ShakeDetector.Config.MEDIUM
         }
         testDetector = ShakeDetector(config)
+        testPeak = 0f
         sm.unregisterListener(this)
         sm.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME)
         testStatus.text = getString(R.string.test_hint)
@@ -112,7 +114,13 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onSensorChanged(e: SensorEvent) {
         val d = testDetector ?: return
-        if (d.onSample(e.timestamp / 1_000_000L, e.values[0], e.values[1], e.values[2])) {
+        val hit = d.onSample(e.timestamp / 1_000_000L, e.values[0], e.values[1], e.values[2])
+        if (d.lastMag > testPeak) testPeak = d.lastMag
+        if (!hit) {
+            testStatus.text = getString(R.string.test_hint) + "\nIntensité max mesurée : " + "%.1f".format(testPeak) + " m/s²"
+            return
+        }
+        run {
             testStatus.text = getString(R.string.test_ok)
             Vibe.play(this, HapticPattern.AWAKE)
             (getSystemService(Context.SENSOR_SERVICE) as SensorManager).unregisterListener(this)
@@ -146,6 +154,7 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
             append("Diagnostic de la secousse\n")
             append("• Veille démarrée : ").append(at(s.diagServiceAt)).append('\n')
             if (s.diagServiceError.isNotEmpty()) append("• Erreur de la veille : ").append(s.diagServiceError).append('\n')
+            append("• Capteur : ").append(if (s.diagSamplesAt == 0L) "aucune mesure reçue" else "mesure reçue " + at(s.diagSamplesAt) + ", intensité max " + "%.1f".format(s.diagPeak) + " m/s² (secousse = au-delà de 8)").append('\n')
             append("• Dernière secousse détectée : ").append(at(s.diagShakeAt)).append('\n')
             append("• Dernier réveil : ").append(s.diagWake.ifEmpty { "aucun" }).append('\n')
             append("• Service d'accessibilité : ").append(if (a11y) "activé" else "désactivé").append('\n')

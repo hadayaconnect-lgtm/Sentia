@@ -38,7 +38,7 @@ class ShakeDetector(var config: Config = Config.MEDIUM) {
             val LOW = Config(threshold = 16f, minJolts = 6)
             val MEDIUM = Config(threshold = 13f, minJolts = 4)
             /** Très sensible : 3 pics (risque de fausses détections plus élevé). */
-            val HIGH = Config(threshold = 10f, minJolts = 3)
+            val HIGH = Config(threshold = 8f, minJolts = 3)
         }
     }
 
@@ -63,6 +63,9 @@ class ShakeDetector(var config: Config = Config.MEDIUM) {
 
     /** Renseigné par le capteur de pas : tant qu'on marche, on exige une secousse plus forte. */
     @Volatile var walkingUntilMs: Long = 0
+
+    /** Dernière intensité mesurée (gravité retirée), pour le diagnostic. */
+    @Volatile var lastMag: Float = 0f
 
     fun reset() {
         gravityReady = false
@@ -93,6 +96,7 @@ class ShakeDetector(var config: Config = Config.MEDIUM) {
         val ly = y - gravity[1]
         val lz = z - gravity[2]
         val mag = sqrt(lx * lx + ly * ly + lz * lz)
+        lastMag = mag
 
         val walking = tsMs < walkingUntilMs
         val threshold = config.threshold * (if (walking) 1.25f else 1f)
