@@ -153,6 +153,8 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         if (!::speech.isInitialized) return
         visible = true
         getSystemService(NotificationManager::class.java).cancel(Notifications.ID_WAKE)
+        // La veille de la secousse peut avoir été arrêtée par le téléphone : on la relance à chaque ouverture.
+        if (settings.shakeEnabled) { try { ShakeService.start(this) } catch (_: Exception) {} }
         // Le profil ou les gestes ont pu changer dans les réglages.
         applyOrbLayout()
         buildActions()
