@@ -47,4 +47,44 @@ object Lang {
         "ar" -> "صف لي ما تراه الكاميرا."
         else -> "Décris ce que tu vois avec la caméra."
     }
+
+    /** « Regarde encore » : on exige une NOUVELLE photo. */
+    fun lookAgainPrompt(lang: String): String = when (lang) {
+        "en" -> "Look again: take a new photo with the camera now and describe what you see."
+        "so" -> "Mar kale eeg: hadda sawir cusub ku qaad kamarada oo ku sifee waxa kaa muuqda."
+        "ar" -> "انظر مرة أخرى: التقط الآن صورة جديدة بالكاميرا وصف لي ما تراه."
+        else -> "Regarde encore : prends une nouvelle photo avec la caméra maintenant et décris ce que tu vois."
+    }
+
+    /** « Lis ça » : photo d'un texte, lu en entier. */
+    fun readTextPrompt(lang: String): String = when (lang) {
+        "en" -> "Take a photo with the camera now and read aloud all the text you can see."
+        "so" -> "Hadda sawir ku qaad kamarada oo akhri qoraalka oo dhan ee muuqda."
+        "ar" -> "التقط الآن صورة بالكاميرا واقرأ لي كل النص الظاهر."
+        else -> "Prends une photo avec la caméra maintenant et lis-moi tout le texte visible."
+    }
+
+    /** « Décris la scène » : nouvelle photo, description de l'environnement. */
+    fun describeScenePrompt(lang: String): String = when (lang) {
+        "en" -> "Take a new photo with the camera now and describe the scene around me."
+        "so" -> "Hadda sawir cusub ku qaad kamarada oo ku sifee goobta igu wareegsan."
+        "ar" -> "التقط الآن صورة جديدة بالكاميرا وصف لي المشهد من حولي."
+        else -> "Prends une nouvelle photo avec la caméra maintenant et décris-moi la scène autour de moi."
+    }
+
+    /** « Continue » alors qu'il n'y a rien à reprendre : l'IA poursuit sa réponse. */
+    fun continuePrompt(lang: String): String = when (lang) {
+        "en" -> "Please continue."
+        "so" -> "Fadlan sii wad."
+        "ar" -> "من فضلك تابع."
+        else -> "Continue, s'il te plaît."
+    }
+
+    /** Bouton « Comprendre les sons ». */
+    fun soundsPrompt(lang: String): String = when (lang) {
+        "en" -> "What sounds did you detect around me recently?"
+        "so" -> "Codad noocee ah ayaad dhawaan ku dareentay agtayda?"
+        "ar" -> "ما الأصوات التي رصدتها حولي مؤخرا؟"
+        else -> "Quels sons as-tu détectés récemment autour de moi ?"
+    }
 }

@@ -2,6 +2,7 @@ package dj.sentia
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.media.audiofx.AcousticEchoCanceler
 import dj.sentia.core.ShakeDetector
 import java.util.UUID
 
@@ -36,6 +37,14 @@ class Settings(context: Context) {
     var voiceReplies: Boolean
         get() = if (p.contains("voice")) p.getBoolean("voice", true) else profile != "deaf"
         set(v) = p.edit().putBoolean("voice", v).apply()
+
+    /**
+     * Interrompre SENTIA en parlant (« Stop »). Par défaut seulement si le téléphone sait annuler l'écho du haut-parleur,
+     * sinon SENTIA risquerait de s'interrompre avec sa propre voix. Le bouton Stop reste toujours disponible.
+     */
+    var bargeIn: Boolean
+        get() = if (p.contains("barge")) p.getBoolean("barge", false) else AcousticEchoCanceler.isAvailable()
+        set(v) = p.edit().putBoolean("barge", v).apply()
 
     var soundsEnabled: Boolean
         get() = p.getBoolean("sounds", false)

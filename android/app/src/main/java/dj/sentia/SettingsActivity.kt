@@ -37,6 +37,7 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var swVolume: SwitchCompat
     private lateinit var swVoice: SwitchCompat
     private lateinit var swSounds: SwitchCompat
+    private lateinit var swBarge: SwitchCompat
     private lateinit var etCode: EditText
     private lateinit var testStatus: TextView
 
@@ -56,6 +57,7 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
         swVolume = findViewById(R.id.swVolume)
         swVoice = findViewById(R.id.swVoice)
         swSounds = findViewById(R.id.swSounds)
+        swBarge = findViewById(R.id.swBarge)
         etCode = findViewById(R.id.etCode)
         testStatus = findViewById(R.id.testStatus)
 
@@ -71,6 +73,7 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
         swVolume.isChecked = s.volumeEnabled
         swVoice.isChecked = s.voiceReplies
         swSounds.isChecked = s.soundsEnabled
+        swBarge.isChecked = s.bargeIn
         etCode.setText(s.accessCode)
 
         findViewById<Button>(R.id.btnBattery).setOnClickListener { openBatterySettings() }
@@ -151,6 +154,7 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
         s.sensitivity = spSensitivity.selectedItemPosition
         s.shakeEnabled = swShake.isChecked
         s.volumeEnabled = swVolume.isChecked
+        s.bargeIn = swBarge.isChecked
         s.voiceReplies = swVoice.isChecked
         s.accessCode = etCode.text.toString().trim()
 

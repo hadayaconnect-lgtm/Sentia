@@ -30,6 +30,21 @@ class Conversation {
         while (messages.length() > 0) messages.remove(0)
     }
 
+    /** « Ferme la caméra » : on oublie les photos de la conversation (le texte des réponses reste). */
+    fun dropImages() {
+        for (i in 0 until messages.length()) stripAllImages(messages.getJSONObject(i).getJSONArray("content"))
+    }
+
+    private fun stripAllImages(blocks: JSONArray) {
+        for (i in 0 until blocks.length()) {
+            val b = blocks.getJSONObject(i)
+            when (b.getString("type")) {
+                "image" -> blocks.put(i, text("(image retirée)"))
+                "tool_result" -> stripAllImages(b.getJSONArray("content"))
+            }
+        }
+    }
+
     /** Garde la conversation dans les limites du serveur (16 messages, 3 images) sans casser les paires outil/résultat. */
     fun compact() {
         val list = ArrayList<JSONObject>()

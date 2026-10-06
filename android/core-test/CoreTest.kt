@@ -180,6 +180,23 @@ fun main() {
     check("4 motifs simples, tous reconnus par leur clé", listOf("awake", "info", "attention", "detected").all { HapticPattern.fromKey(it) != null } && HapticPattern.fromKey("x") == null)
     check("motifs distincts et courts", HapticPattern.entries.map { it.timings.toList() }.toSet().size == 4 && HapticPattern.entries.all { it.timings.sum() < 1000 })
 
+    println("\n== Commandes vocales")
+    fun cmd(t: String) = VoiceCommands.parse(t)
+    check("« Stop. » reconnu", cmd("Stop.") == VoiceCommand.STOP && cmd("Arrête !") == VoiceCommand.STOP && cmd("Tais-toi") == VoiceCommand.STOP)
+    check("« Stop, s'il te plaît » reconnu", cmd("Stop, s'il te plaît.") == VoiceCommand.STOP && cmd("SENTIA stop") == VoiceCommand.STOP)
+    check("pause / continue / répète", cmd("Pause") == VoiceCommand.PAUSE && cmd("Continue.") == VoiceCommand.CONTINUE && cmd("Répète") == VoiceCommand.REPEAT && cmd("Vas-y") == VoiceCommand.CONTINUE)
+    check("regarde encore / lis ça / décris la scène / ferme la caméra",
+        cmd("Regarde encore") == VoiceCommand.LOOK_AGAIN && cmd("Lis ça") == VoiceCommand.READ_TEXT &&
+        cmd("Décris la scène") == VoiceCommand.DESCRIBE_SCENE && cmd("Ferme la caméra.") == VoiceCommand.CLOSE_CAMERA)
+    check("anglais", cmd("Stop") == VoiceCommand.STOP && cmd("Go on") == VoiceCommand.CONTINUE && cmd("Look again") == VoiceCommand.LOOK_AGAIN && cmd("Close the camera") == VoiceCommand.CLOSE_CAMERA)
+    check("arabe (avec voyelles et variantes d'écriture)", cmd("قِف") == VoiceCommand.STOP && cmd("تابع") == VoiceCommand.CONTINUE && cmd("أغلق الكاميرا") == VoiceCommand.CLOSE_CAMERA && cmd("انظر مرة أخرى") == VoiceCommand.LOOK_AGAIN)
+    check("somali", cmd("Jooji") == VoiceCommand.STOP && cmd("Sii wad") == VoiceCommand.CONTINUE)
+    check("question normale : pas une commande", cmd("Qu'est-ce qu'il y a devant moi ?") == null && cmd("Quelle est la couleur de la bouteille ?") == null)
+    check("phrase longue contenant « stop » : envoyée à l'IA", cmd("Arrête de me parler de ça et dis-moi quelle heure il est") == null && cmd("Le panneau stop est rouge") == null)
+    check("réponse « oui / d'accord » à « réessayer ? »", VoiceCommands.isRetry("Oui.") && VoiceCommands.isRetry("D'accord") && !VoiceCommands.isRetry("Quelle heure est-il ?"))
+    check("transcription vide ou inventée à partir du silence", VoiceCommands.isNoise("") && VoiceCommands.isNoise("  .  ") &&
+        VoiceCommands.isNoise("Sous-titrage ST' 501") && VoiceCommands.isNoise("Thanks for watching!") && !VoiceCommands.isNoise("Bonjour"))
+
     println(if (failures == 0) "\nTout est vert." else "\n$failures échec(s).")
     if (failures > 0) System.exit(1)
 }

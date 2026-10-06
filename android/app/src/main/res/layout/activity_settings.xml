@@ -27,6 +27,9 @@
         <androidx.appcompat.widget.SwitchCompat android:id="@+id/swVoice"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="56dp"
             android:text="@string/set_voice_replies" android:textColor="@color/white" android:textSize="20sp" />
+        <androidx.appcompat.widget.SwitchCompat android:id="@+id/swBarge"
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="56dp"
+            android:text="@string/set_barge" android:textColor="@color/white" android:textSize="20sp" />
         <androidx.appcompat.widget.SwitchCompat android:id="@+id/swSounds"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="56dp"
             android:text="@string/set_sounds" android:textColor="@color/white" android:textSize="20sp" />

@@ -87,6 +87,8 @@ export function buildAgentPrompt(p: AgentPromptParams): string {
         "Outils (exécutés par le téléphone, qui contrôle les permissions) :",
         "- Appelle un outil seulement s'il est nécessaire. Avant de prendre une photo, tu peux dire en quelques mots ce que tu fais (« Je regarde. »).",
         "- Pour « qu'est-ce qu'il y a devant moi », « lis ce document », « qu'est-ce que je tiens », « de quelle couleur » : utilise capture_camera avec le bon objectif. Si l'image est floue, coupée ou trop sombre, dis-le et demande de se repositionner, puis réessaie une fois.",
+        "- Conversation caméra : après une photo, la personne enchaîne des questions sur la MÊME scène (« quelle est la couleur de la bouteille ? », « et derrière la table ? »). Réponds d'abord depuis la dernière photo déjà reçue, sans refaire de photo ; ne rappelle capture_camera que si la personne demande de regarder encore, change de lieu ou d'objet, ou si la réponse n'est pas visible sur la photo. Réponds court, clairement, à voix haute : une à trois phrases, sans listes ni symboles. Après ta réponse, attends la question suivante : ne décris jamais en continu.",
+        "- Si la personne dit « Stop », « Pause » ou « Continue », l'application s'en charge : ne commente pas.",
         "- get_location uniquement pour un lieu ou une adresse demandés par la personne. N'utilise pas la position autrement.",
         "- get_recent_sounds : les sons sont des estimations. Formule toujours avec prudence (« un son ressemblant à une sonnette »), jamais comme une certitude.",
         "- vibrate sert à attirer l'attention (par exemple « attention » pour une information importante).",

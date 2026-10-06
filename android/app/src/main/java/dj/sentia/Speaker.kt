@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -23,6 +24,15 @@ class Speaker(context: Context, private val client: AgentClient) {
     private var player: MediaPlayer? = null
     @Volatile private var counter = 0
 
+    /** Vrai pendant que SENTIA parle (synthèse du téléphone ou voix du serveur). */
+    @Volatile var speaking = false
+        private set
+    @Volatile private var currentText = ""
+    @Volatile private var currentOffset = 0
+    @Volatile private var remainder: String? = null
+    @Volatile private var sayToken = 0
+    @Volatile private var serverCont: CancellableContinuation<Boolean>? = null
+
     init {
         tts = TextToSpeech(app) { status -> ready.complete(status == TextToSpeech.SUCCESS) }
     }
@@ -31,21 +41,37 @@ class Speaker(context: Context, private val client: AgentClient) {
     suspend fun say(text: String, lang: String): Boolean {
         if (text.isBlank()) return true
         stop()
-        val engine = if (ready.await()) tts else null
-        if (engine != null) {
-            val avail = engine.isLanguageAvailable(Lang.locale(lang))
-            if (avail >= TextToSpeech.LANG_AVAILABLE) {
-                engine.setLanguage(Lang.locale(lang))
-                return speakLocal(engine, text)
+        val token = ++sayToken
+        currentText = text
+        currentOffset = 0
+        remainder = null
+        speaking = true
+        try {
+            val engine = if (ready.await()) tts else null
+            if (engine != null) {
+                val avail = engine.isLanguageAvailable(Lang.locale(lang))
+                if (avail >= TextToSpeech.LANG_AVAILABLE) {
+                    engine.setLanguage(Lang.locale(lang))
+                    if (speakLocal(engine, text)) return true
+                    if (sayToken != token || !speaking) return true // interrompu par stop() : ce n'est pas une panne
+                }
             }
+            if (speakServer(text, token)) return true
+            if (sayToken != token || !speaking) return true
+            // Dernier recours : la voix par défaut du téléphone, même si la langue n'est pas exactement la bonne.
+            return if (engine != null) speakLocal(engine, text) else false
+        } finally {
+            if (sayToken == token) speaking = false
         }
-        return speakServer(text)
     }
 
     private suspend fun speakLocal(engine: TextToSpeech, text: String): Boolean = suspendCancellableCoroutine { cont ->
         val id = "u" + (++counter)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
+            override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
+                if (utteranceId == id) currentOffset = start
+            }
             override fun onDone(utteranceId: String?) { if (utteranceId == id && cont.isActive) cont.resume(true) }
             @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) { if (utteranceId == id && cont.isActive) cont.resume(false) }
@@ -56,13 +82,15 @@ class Speaker(context: Context, private val client: AgentClient) {
         cont.invokeOnCancellation { engine.stop() }
     }
 
-    private suspend fun speakServer(text: String): Boolean {
+    private suspend fun speakServer(text: String, token: Int): Boolean {
         val file = try {
             withContext(Dispatchers.IO) { client.speak(text, File(app.cacheDir, "reply.mp3")) }
         } catch (e: Exception) {
             return false
         }
+        if (sayToken != token || !speaking) return true // interrompu pendant le téléchargement
         return suspendCancellableCoroutine { cont ->
+            serverCont = cont
             val mp = MediaPlayer()
             player = mp
             try {
@@ -85,8 +113,36 @@ class Speaker(context: Context, private val client: AgentClient) {
     }
 
     fun stop() {
+        speaking = false
         tts?.stop()
+        // Voix du serveur : on libère lecteur ET on débloque l'attente (sinon say() ne rendrait jamais la main).
+        val c = serverCont
+        serverCont = null
         player?.let { release(it) }
+        if (c != null && c.isActive) c.resume(true)
+    }
+
+    /**
+     * Arrête la voix tout de suite (commande « Stop », « Pause » ou la personne qui reprend la parole) et retient
+     * ce qu'il restait à dire, depuis le début de la phrase en cours, pour pouvoir dire « Continue ».
+     */
+    fun interrupt() {
+        if (speaking) {
+            val t = currentText
+            if (t.isNotEmpty()) {
+                val off = currentOffset.coerceIn(0, t.length)
+                val from = if (off <= 0) 0 else t.lastIndexOfAny(charArrayOf('.', '!', '?', '؟', '\n'), off - 1).let { if (it < 0) 0 else it + 1 }
+                remainder = t.substring(from).trim().ifEmpty { null }
+            }
+        }
+        stop()
+    }
+
+    /** Ce qu'il restait à dire quand SENTIA a été interrompue (une seule fois), ou null. */
+    fun takeRemainder(): String? {
+        val r = remainder
+        remainder = null
+        return r
     }
 
     fun shutdown() {
