@@ -2,7 +2,6 @@ package dj.sentia
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.media.audiofx.AcousticEchoCanceler
 import dj.sentia.core.ShakeDetector
 import java.util.UUID
 
@@ -39,12 +38,27 @@ class Settings(context: Context) {
         set(v) = p.edit().putBoolean("voice", v).apply()
 
     /**
-     * Interrompre SENTIA en parlant (« Stop »). Par défaut seulement si le téléphone sait annuler l'écho du haut-parleur,
-     * sinon SENTIA risquerait de s'interrompre avec sa propre voix. Le bouton Stop reste toujours disponible.
+     * Interrompre SENTIA en parlant (« Stop » dit pendant qu'elle parle). Désactivé par défaut : micro ouvert pendant la voix =
+     * risque d'écho (SENTIA s'entend elle-même) selon le téléphone. À activer pour essayer. Le bouton Stop et la secousse
+     * interrompent toujours.
      */
     var bargeIn: Boolean
-        get() = if (p.contains("barge")) p.getBoolean("barge", false) else AcousticEchoCanceler.isAvailable()
+        get() = p.getBoolean("barge", false) // désactivé par défaut : d'abord une conversation fiable (voix finie, puis écoute)
         set(v) = p.edit().putBoolean("barge", v).apply()
+
+    // Diagnostic de la veille (affiché dans les Réglages) : jamais envoyé nulle part.
+    var diagServiceAt: Long
+        get() = p.getLong("d_service", 0L)
+        set(v) = p.edit().putLong("d_service", v).apply()
+    var diagShakeAt: Long
+        get() = p.getLong("d_shake", 0L)
+        set(v) = p.edit().putLong("d_shake", v).apply()
+    var diagWake: String
+        get() = p.getString("d_wake", "") ?: ""
+        set(v) = p.edit().putString("d_wake", v).apply()
+    var diagServiceError: String
+        get() = p.getString("d_err", "") ?: ""
+        set(v) = p.edit().putString("d_err", v).apply()
 
     var soundsEnabled: Boolean
         get() = p.getBoolean("sounds", false)

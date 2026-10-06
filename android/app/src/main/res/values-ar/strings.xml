@@ -103,4 +103,6 @@
     <string name="wake_listen">أنا أستمع إليك.</string>
     <string name="orb_desc">سنتيا. المس مرتين لكي تنظر سنتيا أمامك.</string>
     <string name="analysis_failed">لا أستطيع تحديد ما أمامك بوضوح. حاول تحريك الهاتف قليلا.</string>
+    <string name="set_overlay">السماح بالعرض فوق التطبيقات الأخرى</string>
+    <string name="set_app_perms">أذونات سنتيا (HyperOS: النوافذ في الخلفية)</string>
 </resources>

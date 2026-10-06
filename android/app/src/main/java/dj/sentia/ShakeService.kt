@@ -4,65 +4,42 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import dj.sentia.core.ShakeDetector
 
 /**
- * Service de veille : lit l'accéléromètre et applique ShakeDetector. Aucune donnée de capteur n'est
- * conservée ni envoyée. Limites : certains constructeurs (Xiaomi, Tecno, Infinix, Samsung…) arrêtent les services
- * en arrière-plan ; l'écran Réglages guide vers l'exemption de batterie.
+ * Service de veille (premier plan) : garde la détection de secousse active écran éteint ou application fermée
+ * (balayée des applications récentes). Limites : certains constructeurs (Xiaomi/HyperOS, Tecno, Infinix, Samsung…) arrêtent
+ * les services ; l'écran Réglages guide vers les autorisations. Après un « Forcer l'arrêt » Android interdit tout
+ * redémarrage tant que la personne n'a pas rouvert l'application : c'est une règle du système.
  */
-class ShakeService : Service(), SensorEventListener {
-    private lateinit var sm: SensorManager
-    private val detector = ShakeDetector()
-    private var accel: Sensor? = null
-    private var steps: Sensor? = null
+class ShakeService : Service() {
+    private lateinit var listener: ShakeListener
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
-        sm = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        listener = ShakeListener(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        ServiceCompat.startForeground(this, Notifications.ID_STANDBY, Notifications.standby(this), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        detector.config = settings.shakeConfig()
-        detector.reset()
-        sm.unregisterListener(this)
-        // Capteur « réveil » si dispo : il continue de fonctionner écran éteint, sans garder le processeur éveillé.
-        accel = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER, true) ?: sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        accel?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
-        steps = sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
-        if (steps != null && ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACTIVITY_RECOGNITION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            sm.registerListener(this, steps, SensorManager.SENSOR_DELAY_NORMAL)
+        try {
+            ServiceCompat.startForeground(this, Notifications.ID_STANDBY, Notifications.standby(this), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            settings.diagServiceError = ""
+        } catch (e: Exception) {
+            // Android refuse parfois de passer en premier plan (démarrage depuis l'arrière-plan) : on le note pour le diagnostic.
+            settings.diagServiceError = e.javaClass.simpleName + ": " + (e.message ?: "")
+            stopSelf()
+            return START_NOT_STICKY
         }
+        listener.start()
         return START_STICKY
     }
 
-    override fun onSensorChanged(e: SensorEvent) {
-        when (e.sensor.type) {
-            Sensor.TYPE_STEP_DETECTOR -> {
-                // Même horloge que l'accéléromètre (temps capteur) : en marche pendant 4 s après le dernier pas.
-                detector.walkingUntilMs = e.timestamp / 1_000_000L + 4000
-            }
-            Sensor.TYPE_ACCELEROMETER -> {
-                val tsMs = e.timestamp / 1_000_000L
-                if (detector.onSample(tsMs, e.values[0], e.values[1], e.values[2])) WakeController.wake(this, "shake")
-            }
-        }
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-
     override fun onDestroy() {
-        sm.unregisterListener(this)
+        listener.stop()
         super.onDestroy()
     }
 

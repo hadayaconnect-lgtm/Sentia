@@ -40,9 +40,18 @@
             android:minHeight="56dp" android:inputType="textPassword" android:textColor="@color/white" android:textSize="20sp"
             android:importantForAutofill="no" />
 
+        <TextView android:id="@+id/diagStatus" style="@style/Sentia.Text"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:textSize="15sp" />
         <Button android:id="@+id/btnBattery" style="@style/Sentia.BigButton"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="16dp" android:text="@string/set_battery" android:textSize="18sp" />
+        <Button android:id="@+id/btnOverlay" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/set_overlay" android:textSize="18sp" />
+        <Button android:id="@+id/btnAppPerms" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/set_app_perms" android:textSize="18sp" />
         <Button android:id="@+id/btnA11y" style="@style/Sentia.BigButton"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:text="@string/set_accessibility" android:textSize="18sp" />

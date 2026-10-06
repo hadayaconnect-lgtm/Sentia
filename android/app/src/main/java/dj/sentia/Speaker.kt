@@ -2,6 +2,8 @@ package dj.sentia
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
@@ -33,8 +35,48 @@ class Speaker(context: Context, private val client: AgentClient) {
     @Volatile private var sayToken = 0
     @Volatile private var serverCont: CancellableContinuation<Boolean>? = null
 
+    /** Dernière raison d'échec de la voix (pour le diagnostic affiché à l'écran). */
+    @Volatile var lastError: String? = null
+        private set
+
+    private val audio = app.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var focus: AudioFocusRequest? = null
+
+    /** Volume des médias à zéro : la voix serait « lue » sans qu'on l'entende. On le remonte à un niveau audible. */
+    private fun ensureAudible() {
+        try {
+            if (audio.getStreamVolume(AudioManager.STREAM_MUSIC) == 0) {
+                audio.setStreamVolume(AudioManager.STREAM_MUSIC, (audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC) * 0.6).toInt().coerceAtLeast(1), 0)
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun takeFocus() {
+        try {
+            val r = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .build()
+            focus = r
+            audio.requestAudioFocus(r)
+        } catch (_: Exception) {}
+    }
+
+    private fun dropFocus() {
+        try { focus?.let { audio.abandonAudioFocusRequest(it) } } catch (_: Exception) {}
+        focus = null
+    }
+
     init {
-        tts = TextToSpeech(app) { status -> ready.complete(status == TextToSpeech.SUCCESS) }
+        tts = TextToSpeech(app) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                try {
+                    tts?.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                } catch (_: Exception) {}
+            } else {
+                lastError = "synthèse vocale du téléphone non initialisée (code $status)"
+            }
+            ready.complete(status == TextToSpeech.SUCCESS)
+        }
     }
 
     /**
@@ -56,6 +98,9 @@ class Speaker(context: Context, private val client: AgentClient) {
         currentOffset = 0
         remainder = null
         speaking = true
+        lastError = null
+        ensureAudible()
+        takeFocus()
         try {
             val engine = if (ready.await()) tts else null
             if (engine != null) {
@@ -71,7 +116,7 @@ class Speaker(context: Context, private val client: AgentClient) {
             // Dernier recours : la voix par défaut du téléphone, même si la langue n'est pas exactement la bonne.
             return if (engine != null) speakLocal(engine, spoken) else false
         } finally {
-            if (sayToken == token) speaking = false
+            if (sayToken == token) { speaking = false; dropFocus() }
         }
     }
 
@@ -84,7 +129,8 @@ class Speaker(context: Context, private val client: AgentClient) {
             }
             override fun onDone(utteranceId: String?) { if (utteranceId == id && cont.isActive) cont.resume(true) }
             @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) { if (utteranceId == id && cont.isActive) cont.resume(false) }
+            override fun onError(utteranceId: String?) { lastError = "erreur de la synthèse vocale"; if (utteranceId == id && cont.isActive) cont.resume(false) }
+            override fun onError(utteranceId: String?, errorCode: Int) { lastError = "erreur de la synthèse vocale (code $errorCode)"; if (utteranceId == id && cont.isActive) cont.resume(false) }
             override fun onStop(utteranceId: String?, interrupted: Boolean) { if (utteranceId == id && cont.isActive) cont.resume(true) }
         })
         val r = engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)

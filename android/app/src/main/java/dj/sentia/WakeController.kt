@@ -39,11 +39,24 @@ object WakeController {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             .putExtra(AssistantActivity.EXTRA_WAKE, true)
             .putExtra(AssistantActivity.EXTRA_SOURCE, source)
-        try { c.startActivity(intent) } catch (_: Exception) {}
+        val stamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+        try {
+            c.startActivity(intent)
+            c.settings.diagWake = "$stamp : ouverture demandée"
+        } catch (e: Exception) {
+            c.settings.diagWake = "$stamp : ouverture REFUSÉE (" + e.javaClass.simpleName + ")"
+        }
         // Dans tous les cas on pose aussi la notification plein écran : si l'activité s'est ouverte,
         // elle l'efface ; sinon c'est elle qui ouvre SENTIA.
         Notifications.wake(c)
-        main.postDelayed({ if (!AssistantActivity.visible) Notifications.wake(c) }, 800)
+        main.postDelayed({
+            if (!AssistantActivity.visible) {
+                Notifications.wake(c)
+                c.settings.diagWake = "$stamp : écran NON ouvert (Android bloque l'ouverture en arrière-plan : autorisez l'affichage par-dessus les autres apps et les fenêtres en arrière-plan)"
+            } else {
+                c.settings.diagWake = "$stamp : écran ouvert, SENTIA réveillée"
+            }
+        }, 1200)
     }
 
     @Suppress("unused")

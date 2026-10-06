@@ -21,7 +21,8 @@ import kotlin.math.sin
  */
 class OrbView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
 
-    enum class Mode { IDLE, LISTENING, THINKING, SPEAKING }
+    /** Les états de SENTIA : attente, écoute, réflexion, analyse de la caméra, parole. */
+    enum class Mode { IDLE, LISTENING, THINKING, ANALYZING_CAMERA, SPEAKING }
 
     var mode: Mode = Mode.IDLE
         set(v) { if (field != v) { field = v; invalidate() } }
@@ -93,6 +94,7 @@ class OrbView @JvmOverloads constructor(context: Context, attrs: AttributeSet? =
         Mode.IDLE -> 0.25
         Mode.LISTENING -> 0.45
         Mode.THINKING -> 0.2
+        Mode.ANALYZING_CAMERA -> 0.6
         Mode.SPEAKING -> 0.8
     }
 
@@ -100,7 +102,7 @@ class OrbView @JvmOverloads constructor(context: Context, attrs: AttributeSet? =
         val t = phase * 2 * PI
         return when (mode) {
             // Dilatation douce puis retour : (1 - cos) / 2 va de 0 à 1 et revient, sans à-coup.
-            Mode.IDLE, Mode.LISTENING, Mode.THINKING -> 0.5 - 0.5 * cos(t)
+            Mode.IDLE, Mode.LISTENING, Mode.THINKING, Mode.ANALYZING_CAMERA -> 0.5 - 0.5 * cos(t)
             // Parole : deux ondes lentes superposées, un mouvement organique, jamais brusque.
             Mode.SPEAKING -> 0.5 + 0.28 * sin(t) + 0.22 * sin(t * 1.7 + 1.1)
         }
@@ -127,7 +129,7 @@ class OrbView @JvmOverloads constructor(context: Context, attrs: AttributeSet? =
         val cy = h / 2f
         val moving = animator != null
         val b = if (moving) wave().toFloat() else 0.5f
-        val target = when (mode) { Mode.IDLE -> 0.05f; Mode.LISTENING -> 0.07f; Mode.THINKING -> 0.04f; Mode.SPEAKING -> 0.10f }
+        val target = when (mode) { Mode.IDLE -> 0.05f; Mode.LISTENING -> 0.07f; Mode.THINKING -> 0.04f; Mode.ANALYZING_CAMERA -> 0.07f; Mode.SPEAKING -> 0.10f }
         curAmp += (target - curAmp) * 0.08f
         val amp = curAmp + 0.12f * burst
         val scale = (1f + amp * b) * (0.35f + 0.65f * appear)

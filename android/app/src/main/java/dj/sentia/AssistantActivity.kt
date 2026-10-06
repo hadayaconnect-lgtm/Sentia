@@ -72,6 +72,9 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private var pendingPermission: CompletableDeferred<Boolean>? = null
     private var builtForProfile: String? = null
     private var keyboardOpen = false
+    /** Les personnes aveugles / malvoyantes entendent toujours les réponses, quel que soit le réglage « réponses vocales ». */
+    private val voiceOn: Boolean get() = settings.voiceReplies || settings.isBlindish
+
     private var greetJob: Job? = null // salut en cours de lecture pendant l'analyse de la première photo
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -324,7 +327,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         launchNew {
             if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
             // Le salut et « Attendez un instant » sont dits pendant que la photo est prise et analysée : pas de silence d'attente.
-            if (voice || settings.voiceReplies) {
+            if (voice || voiceOn) {
                 greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(spokenIntro, replyLang(spokenIntro)) }
             }
             conversation(first = Lang.cameraPrompt(Lang.ui(settings.language)), voice = voice)
@@ -361,7 +364,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         status.text = getString(R.string.see_hint)
         val voice = !settings.isDeafish
         if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
-        if (voice || settings.voiceReplies) {
+        if (voice || voiceOn) {
             val wait = getString(R.string.wait_moment)
             greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(wait, replyLang(wait)) }
         }
@@ -451,7 +454,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
                     // La question est dite (ou affichée) ; on écoute la réponse tout de suite.
                     file = speakWithListening(
                         getString(R.string.error_no_speech),
-                        speak = settings.voiceReplies && !settings.isDeafish, listen = true, timeoutMs = NO_SPEECH_MS,
+                        speak = voiceOn && !settings.isDeafish, listen = true, timeoutMs = NO_SPEECH_MS,
                     )
                     listened = true
                     continue
@@ -479,13 +482,13 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private suspend fun answer(prompt: String, voice: Boolean): File? {
         speaker.takeRemainder() // une nouvelle question remplace ce qu'il restait à dire
         status.text = getString(R.string.thinking)
-        orb.mode = OrbView.Mode.THINKING
         reply.text = ""
         // Demande de regarder : photo + analyse en 10 secondes MAXIMUM, puis réponse dite à voix haute.
         val look = isLookPrompt(prompt)
+        orb.mode = if (look) OrbView.Mode.ANALYZING_CAMERA else OrbView.Mode.THINKING
         val onPreface: (String) -> Unit = { preface ->
             reply.text = preface
-            if (settings.voiceReplies && greetJob?.isActive != true) lifecycleScope.launch { speaker.say(preface, replyLang(preface)) }
+            if (voiceOn && greetJob?.isActive != true) lifecycleScope.launch { speaker.say(preface, replyLang(preface)) }
         }
         val answer = try {
             if (look) engine.askLook(prompt, onPreface) else engine.ask(prompt, onPreface)
@@ -514,7 +517,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
 
     /** Dit la réponse (voix prioritaire pour les profils aveugle / malvoyant) et, en mode voix, écoute la suite. */
     private suspend fun deliver(text: String, voice: Boolean): File? {
-        if (settings.voiceReplies) return speakWithListening(text, speak = true, listen = voice, timeoutMs = NO_SPEECH_MS)
+        if (voiceOn) return speakWithListening(text, speak = true, listen = voice, timeoutMs = NO_SPEECH_MS)
         reply.announceForAccessibility(text)
         return if (voice) listenOnce(false) else null
     }
@@ -534,14 +537,14 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             }
             VoiceCommand.CONTINUE -> {
                 val rest = speaker.takeRemainder()
-                if (rest != null) return speakWithListening(rest, speak = settings.voiceReplies, listen = voice, timeoutMs = NO_SPEECH_MS)
+                if (rest != null) return speakWithListening(rest, speak = voiceOn, listen = voice, timeoutMs = NO_SPEECH_MS)
                 return answer(Lang.continuePrompt(lang), voice)
             }
             VoiceCommand.REPEAT -> {
                 speaker.takeRemainder()
                 if (lastReply.isEmpty()) return if (voice) listenOnce(false) else ENDED
                 reply.text = lastReply
-                if (!settings.voiceReplies) { reply.announceForAccessibility(lastReply); return if (voice) listenOnce(false) else ENDED }
+                if (!voiceOn) { reply.announceForAccessibility(lastReply); return if (voice) listenOnce(false) else ENDED }
                 return speakWithListening(lastReply, speak = true, listen = voice, timeoutMs = NO_SPEECH_MS)
             }
             VoiceCommand.LOOK_AGAIN -> return answer(Lang.lookAgainPrompt(lang), voice)
@@ -552,7 +555,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
                 engine.conversation.dropImages()
                 val msg = getString(R.string.camera_closed)
                 status.text = msg
-                return speakWithListening(msg, speak = settings.voiceReplies, listen = voice, timeoutMs = NO_SPEECH_MS)
+                return speakWithListening(msg, speak = voiceOn, listen = voice, timeoutMs = NO_SPEECH_MS)
             }
         }
         @Suppress("UNREACHABLE_CODE")
@@ -587,7 +590,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private suspend fun sayChecked(text: String, lang: String) {
         orb.mode = OrbView.Mode.SPEAKING
         val ok = try { speaker.say(text, lang) } finally { orb.mode = OrbView.Mode.IDLE }
-        if (!ok) status.text = getString(R.string.error_no_voice)
+        if (!ok) status.text = getString(R.string.error_no_voice) + (speaker.lastError?.let { " ($it)" } ?: "")
     }
 
     /** Écoute normale (micro ouvert, on attend la parole). */
@@ -598,7 +601,11 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         // Laisse finir l'annonce du lecteur d'écran / la fin de la voix avant d'ouvrir le micro (sinon il s'écoute lui-même).
         delay(if (settle && isScreenReaderOn()) 900L else if (afterSpeech) 350L else 150L)
         val f = speech.record(noSpeechTimeoutMs = timeoutMs)
-        if (f == null) lastDiagnostic = speech.startError?.let { "micro: $it" } ?: "niveau ${speech.lastPeak}"
+        if (f == null) {
+            lastDiagnostic = speech.startError?.let { "micro : $it" } ?: "niveau sonore ${speech.lastPeak}"
+            // Micro refusé, occupé ou muet : on le dit tout de suite à l'écran (la cause n'est pas « je n'ai pas compris »).
+            speech.startError?.let { status.text = "🎤 $it" }
+        }
         return f
     }
 
@@ -633,7 +640,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
 
     private fun showError(message: String) {
         status.text = message
-        if (settings.voiceReplies && !settings.isDeafish) lifecycleScope.launch { speaker.say(message, Lang.ui(settings.language)) }
+        if (voiceOn && !settings.isDeafish) lifecycleScope.launch { speaker.say(message, Lang.ui(settings.language)) }
         if (settings.isDeafish) Vibe.play(this, HapticPattern.ATTENTION)
     }
 
@@ -674,7 +681,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             .create()
         dialog.show()
         cont.invokeOnCancellation { dialog.dismiss() }
-        if (settings.voiceReplies) lifecycleScope.launch { speaker.say("$title $message", replyLang(message)) }
+        if (voiceOn) lifecycleScope.launch { speaker.say("$title $message", replyLang(message)) }
     }
 
     companion object {

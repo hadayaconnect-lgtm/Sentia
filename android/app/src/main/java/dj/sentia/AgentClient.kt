@@ -80,7 +80,7 @@ class AgentClient(context: Context) {
     /** Transcription : renvoie (texte, langue détectée ou ""). */
     fun transcribe(audio: File): Pair<String, String> {
         val form = MultipartBody.Builder().setType(MultipartBody.FORM)
-            .addFormDataPart("audio", audio.name, audio.asRequestBody("audio/mp4".toMediaType()))
+            .addFormDataPart("audio", audio.name, audio.asRequestBody((if (audio.name.endsWith(".wav")) "audio/wav" else "audio/mp4").toMediaType()))
             .build()
         return execute(builder("/api/transcribe").post(form).build()) { r ->
             val j = JSONObject(r.body!!.string())

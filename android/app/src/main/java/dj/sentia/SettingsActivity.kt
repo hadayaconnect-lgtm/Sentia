@@ -40,6 +40,7 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var swBarge: SwitchCompat
     private lateinit var etCode: EditText
     private lateinit var testStatus: TextView
+    private lateinit var diagStatus: TextView
 
     private var testDetector: ShakeDetector? = null
 
@@ -60,6 +61,7 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
         swBarge = findViewById(R.id.swBarge)
         etCode = findViewById(R.id.etCode)
         testStatus = findViewById(R.id.testStatus)
+        diagStatus = findViewById(R.id.diagStatus)
 
         spLanguage.adapter = adapter(listOf(R.string.lang_auto, R.string.lang_fr, R.string.lang_en, R.string.lang_so, R.string.lang_ar))
         spProfile.adapter = adapter(listOf(R.string.profile_blind, R.string.profile_deaf, R.string.profile_both, R.string.profile_other))
@@ -77,6 +79,11 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
         etCode.setText(s.accessCode)
 
         findViewById<Button>(R.id.btnBattery).setOnClickListener { openBatterySettings() }
+        findViewById<Button>(R.id.btnOverlay).setOnClickListener {
+            try { startActivity(Intent(AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) }
+            catch (e: Exception) { openAppDetails() }
+        }
+        findViewById<Button>(R.id.btnAppPerms).setOnClickListener { openAppPermissions() }
         findViewById<Button>(R.id.btnA11y).setOnClickListener { startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS)) }
         findViewById<Button>(R.id.btnTest).setOnClickListener { startTest() }
         findViewById<Button>(R.id.btnSave).setOnClickListener { save() }
@@ -118,6 +125,48 @@ class SettingsActivity : AppCompatActivity(), SensorEventListener {
     override fun onPause() {
         (getSystemService(Context.SENSOR_SERVICE) as SensorManager).unregisterListener(this)
         super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshDiag()
+    }
+
+    /** État réel de la veille : de quoi savoir pourquoi la secousse ne réveille pas (ou si c'est Android qui bloque). */
+    private fun refreshDiag() {
+        val s = settings
+        val f = java.text.SimpleDateFormat("dd/MM HH:mm:ss", java.util.Locale.getDefault())
+        fun at(t: Long) = if (t == 0L) "jamais" else f.format(java.util.Date(t))
+        val overlay = if (Build.VERSION.SDK_INT >= 23) AndroidSettings.canDrawOverlays(this) else true
+        val battery = (getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)
+        val a11y = (getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager)
+            .getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_GENERIC)
+            .any { it.resolveInfo.serviceInfo.packageName == packageName }
+        diagStatus.text = buildString {
+            append("Diagnostic de la secousse\n")
+            append("• Veille démarrée : ").append(at(s.diagServiceAt)).append('\n')
+            if (s.diagServiceError.isNotEmpty()) append("• Erreur de la veille : ").append(s.diagServiceError).append('\n')
+            append("• Dernière secousse détectée : ").append(at(s.diagShakeAt)).append('\n')
+            append("• Dernier réveil : ").append(s.diagWake.ifEmpty { "aucun" }).append('\n')
+            append("• Service d'accessibilité : ").append(if (a11y) "activé" else "désactivé").append('\n')
+            append("• Affichage par-dessus les autres apps : ").append(if (overlay) "autorisé" else "NON autorisé").append('\n')
+            append("• Batterie sans restriction : ").append(if (battery) "oui" else "non")
+        }
+    }
+
+    private fun openAppDetails() {
+        startActivity(Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+    }
+
+    /** HyperOS / MIUI : page « Autres autorisations » (fenêtres en arrière-plan). Sinon, page standard de l'application. */
+    private fun openAppPermissions() {
+        try {
+            startActivity(Intent("miui.intent.action.APP_PERM_EDITOR")
+                .setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                .putExtra("extra_pkgname", packageName))
+        } catch (e: Exception) {
+            openAppDetails()
+        }
     }
 
     // ---- Android : batterie, accessibilité ---------------------------------------------------------------------------

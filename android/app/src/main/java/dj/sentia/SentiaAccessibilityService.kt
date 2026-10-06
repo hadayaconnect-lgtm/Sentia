@@ -9,7 +9,7 @@ import android.view.accessibility.AccessibilityEvent
 import dj.sentia.core.VolumeGesture
 
 /**
- * Sert UNIQUEMENT à repérer « les deux touches de volume tenues 1 seconde ». Il ne lit aucun contenu d'écran
+ * Repère « les deux touches de volume tenues 1 seconde » et garde aussi la détection de secousse active. Il ne lit aucun contenu d'écran
  * (aucun événement d'accessibilité n'est exploité). Le comportement écran éteint / verrouillé varie selon les
  * téléphones : à valider sur chaque modèle.
  */
@@ -22,6 +22,19 @@ class SentiaAccessibilityService : AccessibilityService() {
             if (gesture.tick(SystemClock.uptimeMillis())) WakeController.wake(this@SentiaAccessibilityService, "volume")
             if (gesture.bothHeld) handler.postDelayed(this, 100)
         }
+    }
+
+    private var shake: ShakeListener? = null
+
+    /** Le téléphone garde ce service en vie et le relance : la secousse y reste donc détectée après fermeture de l'application. */
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        if (settings.shakeEnabled) shake = ShakeListener(this).also { it.start() }
+    }
+
+    override fun onDestroy() {
+        shake?.stop(); shake = null
+        super.onDestroy()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -47,6 +60,7 @@ class SentiaAccessibilityService : AccessibilityService() {
     override fun onUnbind(intent: android.content.Intent?): Boolean {
         handler.removeCallbacks(ticker)
         gesture.reset()
+        shake?.stop(); shake = null
         return super.onUnbind(intent)
     }
 }

@@ -103,4 +103,6 @@
     <string name="wake_listen">Waan ku dhegeysanayaa.</string>
     <string name="orb_desc">SENTIA. Laba jeer taabo si SENTIA hortaada u eegto.</string>
     <string name="analysis_failed">Ma awoodo inaan si cad u aqoonsado waxa hortaada ah. Isku day inaad taleefanka wax yar dhaqaajiso.</string>
+    <string name="set_overlay">Ogolow muuqaal ka sarreeya apps-ka kale</string>
+    <string name="set_app_perms">Ogolaanshaha SENTIA (HyperOS: daaqado gadaal ah)</string>
 </resources>
