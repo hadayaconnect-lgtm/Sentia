@@ -35,11 +35,22 @@ class OrbView @JvmOverloads constructor(context: Context, attrs: AttributeSet? =
     private var appear = 1f          // 0 → 1 à l'apparition (réveil)
     private var animator: ValueAnimator? = null
     private var appearAnimator: ValueAnimator? = null
+    private var burst = 0f           // 1 → 0 pendant ~2 s après un réveil : battement plus ample et plus vif
+    private var burstAnimator: ValueAnimator? = null
+    private var curAmp = 0.05f       // amplitude lissée : les changements d'état se fondent sans à-coup
 
     /** Fait « apparaître » la boule au réveil : elle grandit doucement depuis le centre. */
     fun wake() {
         appearAnimator?.cancel()
-        if (!ValueAnimator.areAnimatorsEnabled()) { appear = 1f; invalidate(); return }
+        burstAnimator?.cancel()
+        if (!ValueAnimator.areAnimatorsEnabled()) { appear = 1f; burst = 0f; invalidate(); return }
+        burst = 1f
+        burstAnimator = ValueAnimator.ofFloat(1f, 0f).apply {
+            duration = 2000
+            interpolator = DecelerateInterpolator(1.2f)
+            addUpdateListener { burst = it.animatedValue as Float }
+            start()
+        }
         appear = 0f
         appearAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 900
@@ -61,7 +72,7 @@ class OrbView @JvmOverloads constructor(context: Context, attrs: AttributeSet? =
                 val now = System.nanoTime()
                 if (lastNanos != 0L) {
                     val dt = (now - lastNanos) / 1e9
-                    phase += dt * speed()
+                    phase += dt * speed() * (1.0 + 1.6 * burst)
                 }
                 lastNanos = now
                 invalidate()
@@ -73,13 +84,14 @@ class OrbView @JvmOverloads constructor(context: Context, attrs: AttributeSet? =
     override fun onDetachedFromWindow() {
         animator?.cancel(); animator = null
         appearAnimator?.cancel(); appearAnimator = null
+        burstAnimator?.cancel(); burstAnimator = null
         super.onDetachedFromWindow()
     }
 
     /** Battements par seconde : calme au repos, un peu plus vif en écoute, lent quand elle réfléchit. */
     private fun speed(): Double = when (mode) {
-        Mode.IDLE -> 0.32
-        Mode.LISTENING -> 0.55
+        Mode.IDLE -> 0.25
+        Mode.LISTENING -> 0.45
         Mode.THINKING -> 0.2
         Mode.SPEAKING -> 0.8
     }
@@ -115,18 +127,20 @@ class OrbView @JvmOverloads constructor(context: Context, attrs: AttributeSet? =
         val cy = h / 2f
         val moving = animator != null
         val b = if (moving) wave().toFloat() else 0.5f
-        val amp = when (mode) { Mode.IDLE -> 0.06f; Mode.LISTENING -> 0.08f; Mode.THINKING -> 0.04f; Mode.SPEAKING -> 0.10f }
+        val target = when (mode) { Mode.IDLE -> 0.05f; Mode.LISTENING -> 0.07f; Mode.THINKING -> 0.04f; Mode.SPEAKING -> 0.10f }
+        curAmp += (target - curAmp) * 0.08f
+        val amp = curAmp + 0.12f * burst
         val scale = (1f + amp * b) * (0.35f + 0.65f * appear)
         val alpha = (255 * appear).toInt().coerceIn(0, 255)
 
-        halo.alpha = alpha
+        halo.alpha = (alpha * (1f + 0.4f * burst)).toInt().coerceIn(0, 255)
         canvas.drawCircle(cx, cy, base * 1.6f * scale, halo)
         core.alpha = alpha
         canvas.drawCircle(cx, cy, base * scale, core)
 
         // Anneau fin : visible seulement quand elle écoute ou parle, il s'élargit puis s'efface.
-        if (moving && (mode == Mode.LISTENING || mode == Mode.SPEAKING)) {
-            val p = ((phase * (if (mode == Mode.LISTENING) 0.5 else 0.8)) % 1.0).toFloat()
+        if (moving && (mode == Mode.LISTENING || mode == Mode.SPEAKING || burst > 0.02f)) {
+            val p = (((if (burst > 0.02f) (1f - burst).toDouble() * 1.4 else phase * (if (mode == Mode.LISTENING) 0.5 else 0.8))) % 1.0).toFloat()
             ring.color = 0xFF9FD4FF.toInt()
             ring.alpha = ((1f - p) * 110 * appear).toInt().coerceIn(0, 255)
             canvas.drawCircle(cx, cy, base * scale * (1.05f + 0.35f * p), ring)

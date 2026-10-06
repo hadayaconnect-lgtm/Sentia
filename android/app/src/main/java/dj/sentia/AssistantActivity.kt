@@ -10,6 +10,8 @@ import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityManager
@@ -22,6 +24,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.widget.TextViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -109,9 +112,18 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         title.text = "🧠 SENTIA"
         title.contentDescription = "SENTIA"
 
-        findViewById<Button>(R.id.repeatBtn).setOnClickListener { onRepeatButton() }
-        findViewById<Button>(R.id.stopBtn).setOnClickListener { onStopButton() }
-        findViewById<Button>(R.id.settingsBtn).setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
+        val repeatBtn = findViewById<Button>(R.id.repeatBtn)
+        val stopBtn = findViewById<Button>(R.id.stopBtn)
+        val settingsBtn = findViewById<Button>(R.id.settingsBtn)
+        for ((b, icon) in listOf(repeatBtn to "🔁", stopBtn to "⏹", settingsBtn to "⚙️")) {
+            val label = b.text.toString()
+            b.contentDescription = label
+            b.text = "$icon\n$label" // icône au-dessus du texte : rien n'est coupé, même sur un petit écran
+            fitText(b, 11, 16)
+        }
+        repeatBtn.setOnClickListener { onRepeatButton() }
+        stopBtn.setOnClickListener { onStopButton() }
+        settingsBtn.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         findViewById<Button>(R.id.sendBtn).setOnClickListener {
             val t = input.text.toString().trim()
             if (t.isNotEmpty()) { input.setText(""); onTyped(t) }
@@ -196,10 +208,17 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         for ((i, b) in listOf(first, second).withIndex()) {
             (b.parent as? LinearLayout)?.removeView(b)
             b.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply { if (i == 1) marginStart = dp(8) }
-            b.textSize = 18f
+            fitText(b, 12, 18)
             row.addView(b)
         }
         return row
+    }
+
+    /** Le texte se réduit tout seul pour tenir dans le bouton (jamais coupé), sans devenir illisible. */
+    private fun fitText(b: Button, minSp: Int, maxSp: Int) {
+        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(b, minSp, maxSp, 1, TypedValue.COMPLEX_UNIT_SP)
+        b.gravity = Gravity.CENTER
+        b.setPadding(dp(6), dp(6), dp(6), dp(6))
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
@@ -277,6 +296,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
 
     /** Coupe tout ce qui est en cours (voix, micro, requête) puis lance le nouveau travail. */
     private fun launchNew(block: suspend () -> Unit) {
+        orb.mode = OrbView.Mode.IDLE // la boule arrête son animation de parole tout de suite (Stop, nouveau bouton…)
         speaker.interrupt() // d'abord : retient ce qu'il restait à dire pour « Continue »
         speech.cancel()
         job?.cancel()
