@@ -11,7 +11,7 @@ import android.content.Intent
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val s = context.settings
-        if (!s.needsOnboarding && s.shakeEnabled) {
+        if (!s.needsOnboarding) {
             try { ShakeService.start(context) } catch (_: Exception) {}
         }
     }

@@ -142,12 +142,22 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
 
         status.text = getString(R.string.ready)
         ensureBackgroundServices()
+        if (savedInstanceState == null) markLauncherOpenAsWake(intent)
         handleWake(intent)
+    }
+
+    /** Profil aveugle : ouvrir l'application depuis l'icône = réveil (SENTIA regarde et décrit tout de suite). */
+    private fun markLauncherOpenAsWake(i: Intent?) {
+        if (i == null || !settings.isBlindish) return
+        if (i.action == Intent.ACTION_MAIN && i.hasCategory(Intent.CATEGORY_LAUNCHER) && !i.hasExtra(EXTRA_SOURCE)) {
+            i.putExtra(EXTRA_WAKE, true).putExtra(EXTRA_SOURCE, "open")
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        markLauncherOpenAsWake(intent)
         if (::speaker.isInitialized && !settings.needsOnboarding) handleWake(intent)
     }
 
@@ -157,7 +167,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         visible = true
         getSystemService(NotificationManager::class.java).cancel(Notifications.ID_WAKE)
         // La veille de la secousse peut avoir été arrêtée par le téléphone : on la relance à chaque ouverture.
-        if (settings.shakeEnabled) { try { ShakeService.start(this) } catch (_: Exception) {} }
+        try { ShakeService.start(this) } catch (_: Exception) {}
         // Le profil ou les gestes ont pu changer dans les réglages.
         applyOrbLayout()
         buildActions()
@@ -338,9 +348,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-        if (settings.shakeEnabled) {
-            try { ShakeService.start(this) } catch (_: Exception) {}
-        }
+        try { ShakeService.start(this) } catch (_: Exception) {}
     }
 
     // ---- Boutons --------------------------------------------------------------------------------------------
@@ -494,7 +502,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             if (look) engine.askLook(prompt, onPreface) else engine.ask(prompt, onPreface)
         } catch (e: AgentException) {
             if (e.kind == AgentException.Kind.TIMEOUT) getString(R.string.analysis_failed) // 10 s écoulées : message dit à voix haute
-            else { showError(messageFor(e)); return ENDED }
+            else { showError(messageFor(e), detailFor(e)); return ENDED }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -616,11 +624,11 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         status.text = getString(R.string.thinking)
         orb.mode = OrbView.Mode.THINKING
         return try {
-            val (t, lang) = withContext(Dispatchers.IO) { client.transcribe(file).also { file.delete() } }
+            val (t, lang) = try { client.transcribe(file) } finally { file.delete() }
             lastSpokenLang = lang
             t
         } catch (e: AgentException) {
-            showError(messageFor(e)); null
+            showError(messageFor(e), detailFor(e)); null
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -638,8 +646,8 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         if (lastDiagnostic.isNotEmpty()) reply.text = "(" + lastDiagnostic + ")" // aide au test ; à retirer pour la version finale
     }
 
-    private fun showError(message: String) {
-        status.text = message
+    private fun showError(message: String, detail: String = "") {
+        status.text = message + detail // le détail technique est affiché, jamais lu à voix haute
         if (voiceOn && !settings.isDeafish) lifecycleScope.launch { speaker.say(message, Lang.ui(settings.language)) }
         if (settings.isDeafish) Vibe.play(this, HapticPattern.ATTENTION)
     }
@@ -657,6 +665,12 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             else -> R.string.error_generic
         }
     )
+
+    /** Cause technique affichée sous le message (code HTTP, etc.) : indispensable pour trouver pourquoi « je n'ai pas pu répondre ». */
+    private fun detailFor(e: AgentException): String = when (e.kind) {
+        AgentException.Kind.NETWORK, AgentException.Kind.CONFIG -> ""
+        else -> "\n[" + e.kind.name + (e.message?.let { " – $it" } ?: "") + "]"
+    }
 
     private fun isScreenReaderOn(): Boolean =
         (getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager).isTouchExplorationEnabled

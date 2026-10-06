@@ -21,9 +21,13 @@ class AssistantEngine(private val context: Context, private val client: AgentCli
     /** Début de l'analyse en cours (0 = pas de photo dans ce tour). */
     private var analysisStart = 0L
 
+    /** Identifiant de la demande en cours : toute réponse portant un autre identifiant est ignorée. */
+    @Volatile private var currentId = 0
+
     /** Question libre. Si l'IA demande la caméra, le chronomètre de 10 s démarre à ce moment-là. */
     suspend fun ask(text: String, onPreface: (String) -> Unit = {}): String {
         analysisStart = 0L
+        currentId++
         conversation.addUserText(text)
         return run(onPreface)
     }
@@ -34,6 +38,9 @@ class AssistantEngine(private val context: Context, private val client: AgentCli
      */
     suspend fun askLook(prompt: String, onPreface: (String) -> Unit = {}): String {
         if (!tools.ensureCamera()) return context.getString(R.string.tool_denied)
+        currentId++
+        // Nouvelle analyse : on oublie les anciennes photos, seule la photo de CETTE analyse est envoyée à l'IA.
+        conversation.dropImages()
         analysisStart = System.currentTimeMillis()
         val photo = withTimeoutOrNull(ANALYSIS_MAX_MS) { tools.takePhoto() }
             ?: throw AgentException(AgentException.Kind.TIMEOUT, "capture")
@@ -46,6 +53,7 @@ class AssistantEngine(private val context: Context, private val client: AgentCli
 
     private suspend fun run(onPreface: (String) -> Unit): String {
         val settings = context.settings
+        val id = currentId
         try {
             var rounds = 0
             while (true) {
@@ -55,9 +63,9 @@ class AssistantEngine(private val context: Context, private val client: AgentCli
                 val deadline = if (analysisStart == 0L) 0L else remainingMs().also {
                     if (it < MIN_CALL_MS) throw AgentException(AgentException.Kind.TIMEOUT, "budget")
                 }
-                val reply = withContext(Dispatchers.IO) {
-                    client.agent(conversation.messages, settings.language, settings.profile, localTime, deadline)
-                }
+                val reply = client.agent(conversation.messages, settings.language, settings.profile, localTime, deadline)
+                // Réponse d'une analyse devenue obsolète (une nouvelle demande a démarré entre-temps) : on l'ignore.
+                if (id != currentId) throw kotlinx.coroutines.CancellationException("analyse obsolète")
                 when (reply) {
                     is AgentReply.Final -> {
                         conversation.addAssistantText(reply.text.ifBlank { "…" })

@@ -25,6 +25,7 @@ class ShakeListener(private val context: Context) : SensorEventListener {
 
     fun start() {
         stop()
+        if (!context.settings.shakeEnabled) return
         sensitivity = context.settings.sensitivity
         detector.config = context.settings.shakeConfig()
         detector.reset()

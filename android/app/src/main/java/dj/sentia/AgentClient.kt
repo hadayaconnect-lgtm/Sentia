@@ -7,11 +7,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /** Client du serveur SENTIA. Aucune clé d'IA ici : seulement l'adresse du serveur et un code d'accès éventuel. */
 class AgentClient(context: Context) {
@@ -36,26 +39,48 @@ class AgentClient(context: Context) {
         return b
     }
 
-    /** @param deadlineMs durée totale maximale de la requête (0 = pas de limite particulière). */
-    private fun <T> execute(request: Request, deadlineMs: Long = 0, parse: (okhttp3.Response) -> T): T {
-        try {
+    /**
+     * Appel HTTP ANNULABLE : si la coroutine est annulée (nouvelle secousse, Stop, nouvelle analyse), la requête est coupée
+     * tout de suite. Une ancienne réponse ne peut donc jamais revenir après une nouvelle demande.
+     * @param deadlineMs durée totale maximale de la requête (0 = pas de limite particulière).
+     */
+    private suspend fun <T> execute(request: Request, deadlineMs: Long = 0, parse: (okhttp3.Response) -> T): T =
+        suspendCancellableCoroutine { cont ->
             val call = http.newCall(request)
             if (deadlineMs > 0) call.timeout().timeout(deadlineMs, TimeUnit.MILLISECONDS)
-            call.execute().use { r ->
-                if (r.code == 401 || r.code == 403) throw AgentException(AgentException.Kind.DENIED)
-                if (!r.isSuccessful) throw AgentException(AgentException.Kind.SERVER, "HTTP ${r.code}")
-                return parse(r)
-            }
-        } catch (e: java.io.InterruptedIOException) {
-            // Délai d'analyse dépassé (call.timeout) — ou délai réseau ordinaire si aucune limite n'était demandée.
-            throw AgentException(if (deadlineMs > 0) AgentException.Kind.TIMEOUT else AgentException.Kind.NETWORK, e.message)
-        } catch (e: IOException) {
-            throw AgentException(AgentException.Kind.NETWORK, e.message)
-        }
-    }
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: IOException) {
+                    if (!cont.isActive) return
+                    // Délai d'analyse dépassé (call.timeout) — ou délai réseau ordinaire si aucune limite n'était demandée.
+                    val kind = if (e is java.io.InterruptedIOException && deadlineMs > 0) AgentException.Kind.TIMEOUT else AgentException.Kind.NETWORK
+                    cont.resumeWithException(AgentException(kind, e.message))
+                }
 
-    /** Un tour de conversation. Appel bloquant : à lancer sur Dispatchers.IO. */
-    fun agent(messages: JSONArray, language: String, profile: String, localTime: String, deadlineMs: Long = 0): AgentReply {
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    response.use { r ->
+                        val result: Result<T> = try {
+                            if (r.code == 401 || r.code == 403) throw AgentException(AgentException.Kind.DENIED, "HTTP ${r.code}")
+                            if (!r.isSuccessful) {
+                                val detail = try { r.body?.string()?.take(120) ?: "" } catch (_: Exception) { "" }
+                                throw AgentException(AgentException.Kind.SERVER, "HTTP ${r.code} $detail".trim())
+                            }
+                            Result.success(parse(r))
+                        } catch (e: AgentException) {
+                            Result.failure(e)
+                        } catch (e: IOException) {
+                            Result.failure(AgentException(AgentException.Kind.NETWORK, e.message))
+                        } catch (e: Exception) {
+                            Result.failure(AgentException(AgentException.Kind.SERVER, "réponse illisible : " + e.javaClass.simpleName))
+                        }
+                        if (cont.isActive) result.fold({ cont.resume(it) }, { cont.resumeWithException(it) })
+                    }
+                }
+            })
+        }
+
+    /** Un tour de conversation (annulable). */
+    suspend fun agent(messages: JSONArray, language: String, profile: String, localTime: String, deadlineMs: Long = 0): AgentReply {
         val body = JSONObject()
             .put("messages", messages)
             .put("language", language)
@@ -78,7 +103,7 @@ class AgentClient(context: Context) {
     }
 
     /** Transcription : renvoie (texte, langue détectée ou ""). */
-    fun transcribe(audio: File): Pair<String, String> {
+    suspend fun transcribe(audio: File): Pair<String, String> {
         val form = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("audio", audio.name, audio.asRequestBody((if (audio.name.endsWith(".wav")) "audio/wav" else "audio/mp4").toMediaType()))
             .build()
@@ -89,7 +114,7 @@ class AgentClient(context: Context) {
     }
 
     /** Voix du serveur (repli quand la voix du téléphone n'existe pas dans la langue). Renvoie un fichier MP3. */
-    fun speak(text: String, out: File): File {
+    suspend fun speak(text: String, out: File): File {
         val body = JSONObject().put("text", text).toString().toRequestBody("application/json".toMediaType())
         return execute(builder("/api/speak").post(body).build()) { r ->
             out.outputStream().use { o -> r.body!!.byteStream().copyTo(o) }

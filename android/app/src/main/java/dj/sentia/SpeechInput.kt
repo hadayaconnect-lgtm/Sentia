@@ -185,9 +185,9 @@ class SpeechInput(private val context: Context) {
         private const val PREROLL_CHUNKS = 5
         private const val FAINT_KEEP_CHUNKS = 60
         private const val SETTLE_MS = 300L
-        private const val MIN_SPEECH_AMPLITUDE = 900
+        private const val MIN_SPEECH_AMPLITUDE = 550
         private const val MAX_SPEECH_LIMIT = 4000
-        private const val FAINT_AMPLITUDE = 400
+        private const val FAINT_AMPLITUDE = 250
         /** Voix à couvrir quand SENTIA parle : plus haut que la fuite du haut-parleur, pour ne pas s'interrompre elle-même. */
         private const val BARGE_IN_LIMIT = 7000
         private const val BARGE_IN_HITS = 2

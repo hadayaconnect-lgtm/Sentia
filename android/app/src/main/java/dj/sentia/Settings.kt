@@ -25,8 +25,8 @@ class Settings(context: Context) {
         set(v) = p.edit().putInt("sens_v2", v).apply()
 
     var shakeEnabled: Boolean
-        get() = p.getBoolean("shake", true)
-        set(v) = p.edit().putBoolean("shake", v).apply()
+        get() = p.getBoolean("shake2", false) // remplacée par les 3 appuis sur Volume + (réglage optionnel)
+        set(v) = p.edit().putBoolean("shake2", v).apply()
 
     var volumeEnabled: Boolean
         get() = p.getBoolean("volume", true)

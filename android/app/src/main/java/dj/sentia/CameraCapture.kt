@@ -34,20 +34,27 @@ object CameraCapture {
         try {
             provider.unbindAll()
             provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, imageCapture)
-            delay(800) // le temps que l'exposition et la mise au point se stabilisent
-            val proxy = suspendCancellableCoroutine<ImageProxy> { cont ->
+            delay(1000) // le temps que l'exposition et la mise au point se stabilisent (jamais de photo avant que la caméra soit prête)
+            suspend fun shoot(): ImageProxy = suspendCancellableCoroutine { cont ->
                 imageCapture.takePicture(executor, object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) { cont.resume(image) }
                     override fun onError(exception: ImageCaptureException) { cont.resumeWithException(exception) }
                 })
             }
-            return proxy.use { toBase64(it, if (highRes) 1600 else 1280) }
+            var photo = shoot().use { toBase64(it, if (highRes) 1600 else 1280) }
+            // Image quasi noire (caméra pas encore prête, objectif couvert) : une seule nouvelle tentative, après une courte pause.
+            if (photo.second < MIN_BRIGHTNESS) {
+                delay(700)
+                photo = shoot().use { toBase64(it, if (highRes) 1600 else 1280) }
+            }
+            return photo.first
         } finally {
             provider.unbindAll()
         }
     }
 
-    private fun toBase64(image: ImageProxy, maxSide: Int): String {
+    /** @return (JPEG en base64, luminosité moyenne 0-255 de l'image) */
+    private fun toBase64(image: ImageProxy, maxSide: Int): Pair<String, Int> {
         val buffer = image.planes[0].buffer
         val bytes = ByteArray(buffer.remaining())
         buffer.get(bytes)
@@ -67,6 +74,16 @@ object CameraCapture {
             bmp.compress(Bitmap.CompressFormat.JPEG, quality, out)
             quality -= 10
         } while (out.size() > 1_200_000 && quality > 30) // le serveur refuse au-delà de ~1,3 Mo
-        return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+        // Luminosité moyenne sur une petite grille de points (image noire = caméra inactive).
+        var sum = 0L
+        var n = 0
+        for (yy in 0 until 12) for (xx in 0 until 12) {
+            val c = bmp.getPixel((bmp.width - 1) * xx / 11, (bmp.height - 1) * yy / 11)
+            sum += (((c shr 16) and 0xFF) * 3 + ((c shr 8) and 0xFF) * 6 + (c and 0xFF)) / 10
+            n++
+        }
+        return Pair(Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP), (sum / n).toInt())
     }
+
+    private const val MIN_BRIGHTNESS = 8
 }

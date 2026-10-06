@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">SENTIA</string>
     <string name="a11y_service_label">SENTIA – touches de volume</string>
-    <string name="a11y_service_desc">Permet de réveiller SENTIA en maintenant ensemble les deux touches de volume. Ce service ne lit rien à l\'écran : il repère seulement ces deux touches.</string>
+    <string name="a11y_service_desc">Permet de réveiller SENTIA en appuyant trois fois vite sur Volume + (ou en maintenant les deux touches de volume). Ce service ne lit rien à l\'écran : il repère seulement ces deux touches.</string>
     <string name="settings_title">Réglages</string>
     <string name="speak_button">Parler</string>
     <string name="listening">Je vous écoute…</string>
@@ -41,8 +41,8 @@
     <string name="sens_low">Faible (secouer franchement)</string>
     <string name="sens_medium">Moyenne</string>
     <string name="sens_high">Forte (plus de risques de réveil par erreur)</string>
-    <string name="set_shake">Réveil par secousse</string>
-    <string name="set_volume">Réveil par les deux touches de volume (maintenir 1 seconde)</string>
+    <string name="set_shake">Réveil par secousse (facultatif, moins fiable)</string>
+    <string name="set_volume">Réveil par 3 appuis rapides sur Volume + (ou les deux touches tenues 1 seconde)</string>
     <string name="set_voice_replies">Réponses parlées</string>
     <string name="set_sounds">Détecter des sons (expérimental)</string>
     <string name="set_battery">Autoriser SENTIA à rester actif en arrière-plan</string>
@@ -60,7 +60,7 @@
     <string name="test_ok">Secousse détectée.</string>
     <string name="sounds_model_missing">Le modèle de sons n\'est pas installé. Voir le guide.</string>
     <string name="notif_channel">SENTIA en veille</string>
-    <string name="notif_text">SENTIA vous écoute : secouez le téléphone.</string>
+    <string name="notif_text">SENTIA vous écoute : appuyez 3 fois sur Volume +.</string>
     <string name="notif_wake_channel">Réveil de SENTIA</string>
     <string name="notif_wake_title">SENTIA est réveillé</string>
     <string name="notif_wake_text">Touchez pour parler.</string>
@@ -81,7 +81,7 @@
     <string name="a11y_reply">Réponse de SENTIA</string>
     <string name="ident_subtitle">Votre assistant IA accessible</string>
     <string name="hint_shake">Secouez votre téléphone pour réveiller SENTIA</string>
-    <string name="hint_volume">Ou maintenez les deux touches de volume pendant 1 seconde</string>
+    <string name="hint_volume">Appuyez 3 fois vite sur Volume + pour réveiller SENTIA</string>
     <string name="btn_see">Voir avec SENTIA</string>
     <string name="see_hint">Montrez-moi ce que vous voulez que j\'analyse.</string>
     <string name="btn_speak">Parler avec SENTIA</string>
@@ -91,7 +91,7 @@
     <string name="paused">En pause. Dites « Continue » ou appuyez sur Parler.</string>
     <string name="ok_stopped">D\'accord.</string>
     <string name="camera_closed">J\'ai fermé la caméra.</string>
-    <string name="stay_available">Je reste disponible. Appuyez sur Parler ou secouez le téléphone.</string>
+    <string name="stay_available">Je reste disponible. Appuyez sur Parler ou appuyez 3 fois sur Volume +.</string>
     <string name="error_no_voice">La voix n\'est pas disponible sur ce téléphone. Installez une voix française : Réglages du téléphone, puis Synthèse vocale.</string>
     <string name="sounds_off_title">Détection de sons désactivée</string>
     <string name="sounds_off_msg">Pour comprendre les sons autour de vous, activez « Détecter des sons » dans les réglages. Cette fonction est expérimentale.</string>

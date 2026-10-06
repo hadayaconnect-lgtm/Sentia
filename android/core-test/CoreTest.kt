@@ -148,6 +148,15 @@ fun main() {
     val (hw2, _) = run(ShakeDetector.Config.MEDIUM, 4.0, walking = true, signal = shake(4.5, 35f, 1.4))
     check("en marchant : secousse faible ignorée, secousse forte détectée", hw1 == 0 && hw2 == 1, "faible=$hw1 forte=$hw2")
 
+    println("\n== Trois appuis sur Volume +")
+    val t3 = VolumeTriple()
+    check("2 appuis : rien", !t3.onUpPress(0) && !t3.onUpPress(400))
+    check("3e appui rapide : déclenché", t3.onUpPress(800))
+    val t4 = VolumeTriple()
+    t4.onUpPress(0); t4.onUpPress(900)
+    check("3 appuis trop espacés : rien", !t4.onUpPress(2100))
+    check("puis 3 rapides : déclenché", !t4.onUpPress(4000) && !t4.onUpPress(4200) && t4.onUpPress(4400))
+
     println("\n== Geste volume (deux touches maintenues)")
     val v = VolumeGesture(1000)
     check("première touche : transmise au système", !v.onKey(VolumeGesture.Key.UP, true, 0))
