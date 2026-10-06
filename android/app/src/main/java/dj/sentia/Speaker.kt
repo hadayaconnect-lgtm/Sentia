@@ -37,12 +37,22 @@ class Speaker(context: Context, private val client: AgentClient) {
         tts = TextToSpeech(app) { status -> ready.complete(status == TextToSpeech.SUCCESS) }
     }
 
+    /**
+     * « SENTIA » en capitales est épelé lettre par lettre par la synthèse vocale : on l'envoie comme un vrai mot.
+     * (Le texte affiché garde « SENTIA ».) En arabe, le nom est écrit en lettres arabes pour la même raison.
+     */
+    private fun pronounceable(text: String, lang: String): String {
+        val name = if (lang == "ar") "سنتيا" else "Sentia"
+        return NAME.replace(text, name)
+    }
+
     /** Lit le texte et attend la fin. Annulable avec stop(). Renvoie false si rien n'a pu être lu. */
     suspend fun say(text: String, lang: String): Boolean {
         if (text.isBlank()) return true
+        val spoken = pronounceable(text, lang)
         stop()
         val token = ++sayToken
-        currentText = text
+        currentText = spoken
         currentOffset = 0
         remainder = null
         speaking = true
@@ -52,14 +62,14 @@ class Speaker(context: Context, private val client: AgentClient) {
                 val avail = engine.isLanguageAvailable(Lang.locale(lang))
                 if (avail >= TextToSpeech.LANG_AVAILABLE) {
                     engine.setLanguage(Lang.locale(lang))
-                    if (speakLocal(engine, text)) return true
+                    if (speakLocal(engine, spoken)) return true
                     if (sayToken != token || !speaking) return true // interrompu par stop() : ce n'est pas une panne
                 }
             }
-            if (speakServer(text, token)) return true
+            if (speakServer(spoken, token)) return true
             if (sayToken != token || !speaking) return true
             // Dernier recours : la voix par défaut du téléphone, même si la langue n'est pas exactement la bonne.
-            return if (engine != null) speakLocal(engine, text) else false
+            return if (engine != null) speakLocal(engine, spoken) else false
         } finally {
             if (sayToken == token) speaking = false
         }
@@ -149,5 +159,9 @@ class Speaker(context: Context, private val client: AgentClient) {
         stop()
         tts?.shutdown()
         tts = null
+    }
+
+    private companion object {
+        val NAME = Regex("sentia", RegexOption.IGNORE_CASE)
     }
 }

@@ -41,11 +41,23 @@ object Lang {
         return if (sys in ALL) sys else "fr"
     }
 
+    /**
+     * Première analyse (secousse) et bouton « Voir » : description utile à une personne aveugle, texte et billets compris.
+     * L'IA décide des photos supplémentaires seulement si nécessaire.
+     */
     fun cameraPrompt(lang: String): String = when (lang) {
-        "en" -> "Describe what you see with the camera."
-        "so" -> "Ku sifee waxa kaamarada ku muuqda."
-        "ar" -> "صف لي ما تراه الكاميرا."
-        else -> "Décris ce que tu vois avec la caméra."
+        "en" -> "Take a photo with the camera now and tell me what is in front of me, for a blind person: people, obstacles, doors, stairs, vehicles, approximate directions (ahead, left, right), useful colours, possible dangers. Also read any visible text and identify any banknote. Three or four short natural sentences, no list."
+        "so" -> "Hadda sawir ku qaad kamarada oo ii sheeg waxa hortayda ah, qof indho la' u habboon: dad, caqabado, albaabbo, jaranjaro, gawaarida, jihooyin (hortaada, bidix, midig), midabada muhiimka ah, khatar suurtagal ah. Sidoo kale akhri qoraalka muuqda oo aqoonsi xaashida lacagta haddii ay jirto. Saddex ama afar weedh oo gaaban."
+        "ar" -> "التقط الآن صورة بالكاميرا وأخبرني بما أمامي، لشخص كفيف: الأشخاص والعوائق والأبواب والسلالم والمركبات والاتجاهات التقريبية (أمامك، يسارك، يمينك) والألوان المفيدة وأي خطر محتمل. اقرأ أيضا أي نص ظاهر وتعرف على أي ورقة نقدية. ثلاث أو أربع جمل قصيرة وطبيعية دون قوائم."
+        else -> "Prends une photo avec la caméra maintenant et dis-moi ce qu'il y a devant moi, pour une personne aveugle : personnes, obstacles, portes, escaliers, véhicules, directions approximatives (devant, à gauche, à droite), couleurs utiles, dangers éventuels. Lis aussi les textes visibles et identifie les billets de banque s'il y en a. Trois ou quatre phrases courtes et naturelles, sans liste."
+    }
+
+    /** « Quel est ce billet ? » : nouvelle photo, identification prudente. */
+    fun banknotePrompt(lang: String): String = when (lang) {
+        "en" -> "Take a photo now of the banknote in front of the camera and identify its currency and value, only if it is clearly visible. If not sure, say so and ask me to bring it closer."
+        "so" -> "Hadda sawir ku qaad xaashida lacagta ee kamarada horteeda oo sheeg lacagta iyo qiimaha, kaliya haddii si cad loo arko. Haddii aadan hubin, sidaas sheeg oo iga codso inaan u soo dhaweeyo kamarada."
+        "ar" -> "التقط الآن صورة للورقة النقدية أمام الكاميرا وحدد عملتها وقيمتها فقط إذا كانت واضحة. إذا لم تكن متأكدا فقل ذلك واطلب مني تقريبها من الكاميرا."
+        else -> "Prends une photo maintenant du billet devant la caméra et identifie sa monnaie et sa valeur, seulement si c'est bien visible. Si tu n'es pas sûre, dis-le et demande-moi de le rapprocher de la caméra."
     }
 
     /** « Regarde encore » : on exige une NOUVELLE photo. */

@@ -97,4 +97,6 @@
     <string name="sounds_off_msg">Pour comprendre les sons autour de vous, activez « Détecter des sons » dans les réglages. Cette fonction est expérimentale.</string>
     <string name="cancel_button">Annuler</string>
     <string name="set_barge">Interrompre SENTIA avec la voix (« Stop »)</string>
+    <string name="wake_hello">Bonjour, je suis SENTIA.</string>
+    <string name="wake_here">Je suis là.</string>
 </resources>

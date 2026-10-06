@@ -70,7 +70,7 @@ class ToolExecutor(private val host: ToolHost, private val settings: Settings) {
     private suspend fun capture(purpose: String): ToolOutput {
         val c = host.context
         if (!host.ensurePermission(Manifest.permission.CAMERA)) return ToolOutput.text(c.getString(R.string.tool_denied), true)
-        val b64 = CameraCapture.capture(c, host.lifecycleOwner, highRes = purpose == "document")
+        val b64 = CameraCapture.capture(c, host.lifecycleOwner, highRes = purpose != "color") // texte, billets et scènes : définition plus haute pour bien lire
         val content = JSONArray()
             .put(Conversation.image(b64))
             .put(Conversation.text("Photo prise (but : $purpose). Cadrage non vérifié : si l'image est floue, coupée ou vide, dis-le et explique comment tenir le téléphone."))

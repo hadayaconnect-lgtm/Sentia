@@ -72,6 +72,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private var pendingPermission: CompletableDeferred<Boolean>? = null
     private var builtForProfile: String? = null
     private var keyboardOpen = false
+    private var greetJob: Job? = null // salut en cours de lecture pendant l'analyse de la première photo
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         pendingPermission?.complete(granted)
@@ -190,6 +191,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         actions.visibility = if (show) View.VISIBLE else View.GONE
         // Les personnes sourdes ont le champ d'écriture toujours sous les yeux.
         if (s.isDeafish) writePanel.visibility = View.VISIBLE
+        else if (s.profile == "blind") writePanel.visibility = View.GONE // pas de clavier dans le parcours aveugle
     }
 
     private fun bigButton(label: String, description: String, weight: Float, onClick: () -> Unit): Button {
@@ -229,8 +231,9 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
      */
     private fun buildActions() {
         val profile = settings.profile
-        if (builtForProfile == profile && actions.childCount > 0) return
-        builtForProfile = profile
+        val key = profile + "/" + settings.soundsEnabled
+        if (builtForProfile == key && actions.childCount > 0) return
+        builtForProfile = key
         actions.removeAllViews()
 
         val speak = bigButton("🗣️ " + getString(R.string.btn_speak), getString(R.string.btn_speak), 2f) { onSpeakButton() }
@@ -245,8 +248,13 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
 
         when (profile) {
             "blind" -> {
-                actions.addView(speak); actions.addView(see)
-                actions.addView(rowOf(write, sounds, 1f))
+                // Écran minimal : deux grands boutons, ni clavier ni champ d'écriture. L'action principale est la secousse.
+                (see.layoutParams as LinearLayout.LayoutParams).weight = 3f
+                actions.addView(see); actions.addView(speak)
+                if (settings.soundsEnabled) {
+                    sounds.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f).apply { topMargin = dp(8) }
+                    actions.addView(sounds)
+                }
             }
             "deaf" -> {
                 write.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 2f).apply { topMargin = dp(8) }
@@ -271,15 +279,19 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private fun handleWake(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_WAKE, false) != true) return
         intent?.removeExtra(EXTRA_WAKE)
-        // Déjà dans une session : « Je suis là. » Sinon, présentation complète.
+        // La secousse veut dire : « Sentia, regarde devant moi et dis-moi ce que tu vois. »
         val inSession = engine.conversation.messages.length() > 0
-        val hello = getString(if (inSession) R.string.greeting else R.string.greeting_first)
+        val hello = getString(if (inSession) R.string.wake_here else R.string.wake_hello)
         status.text = hello
-        orb.wake() // la boule apparaît et se met à battre (la vibration de réveil est déjà faite par WakeController)
-        if (settings.isDeafish) return // écran lisible, pas d'écoute automatique
+        orb.wake() // la boule apparaît et bat plus vivement ~2 s (la vibration de réveil est déjà faite par WakeController)
+        val voice = !settings.isDeafish
         launchNew {
-            if (!ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
-            conversation(greet = hello, voice = true)
+            if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
+            // Le salut est dit pendant que la photo est prise et analysée : pas de silence d'attente.
+            if (voice || settings.voiceReplies) {
+                greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(hello, replyLang(hello)) }
+            }
+            conversation(first = Lang.cameraPrompt(Lang.ui(settings.language)), voice = voice)
         }
     }
 
@@ -308,18 +320,12 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         conversation(voice = true, firstListenDelay = true)
     }
 
-    /** « Voir avec SENTIA » : SENTIA invite à montrer, écoute la question ; sans question, elle décrit ce qui est devant. */
+    /** « Voir avec SENTIA » : comme la secousse, SENTIA regarde tout de suite, décrit à voix haute, puis écoute. */
     private fun onSeeButton() = launchNew {
-        val lang = Lang.ui(settings.language)
-        val hint = getString(R.string.see_hint)
-        status.text = hint
+        status.text = getString(R.string.see_hint)
         val voice = !settings.isDeafish
-        if (voice && ensurePermission(Manifest.permission.RECORD_AUDIO)) {
-            val heard = speakWithListening(hint, speak = settings.voiceReplies || settings.isBlindish, listen = true, timeoutMs = SEE_WAIT_MS)
-            conversation(first = if (heard == null) Lang.cameraPrompt(lang) else null, heard = heard, voice = true)
-        } else {
-            conversation(first = Lang.cameraPrompt(lang), voice = false)
-        }
+        if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
+        conversation(first = Lang.cameraPrompt(Lang.ui(settings.language)), voice = voice)
     }
 
     private fun onSoundsButton() {
@@ -438,7 +444,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         val answer = try {
             engine.ask(prompt) { preface ->
                 reply.text = preface
-                if (settings.voiceReplies) lifecycleScope.launch { speaker.say(preface, replyLang(preface)) }
+                if (settings.voiceReplies && greetJob?.isActive != true) lifecycleScope.launch { speaker.say(preface, replyLang(preface)) }
             }
         } catch (e: AgentException) {
             showError(messageFor(e)); return ENDED
@@ -447,6 +453,8 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         } catch (e: Exception) {
             showError(getString(R.string.error_generic)); return ENDED
         }
+        greetJob?.join() // le salut finit avant la description
+        greetJob = null
         lastReply = answer
         status.text = ""
         reply.text = answer
@@ -489,6 +497,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             VoiceCommand.LOOK_AGAIN -> return answer(Lang.lookAgainPrompt(lang), voice)
             VoiceCommand.READ_TEXT -> return answer(Lang.readTextPrompt(lang), voice)
             VoiceCommand.DESCRIBE_SCENE -> return answer(Lang.describeScenePrompt(lang), voice)
+            VoiceCommand.BANKNOTE -> return answer(Lang.banknotePrompt(lang), voice)
             VoiceCommand.CLOSE_CAMERA -> {
                 engine.conversation.dropImages()
                 val msg = getString(R.string.camera_closed)
@@ -496,6 +505,8 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
                 return speakWithListening(msg, speak = settings.voiceReplies, listen = voice, timeoutMs = NO_SPEECH_MS)
             }
         }
+        @Suppress("UNREACHABLE_CODE")
+        return null
     }
 
     // ---- Voix et micro --------------------------------------------------------------------------------------------

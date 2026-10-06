@@ -97,4 +97,6 @@
     <string name="sounds_off_msg">لفهم الأصوات من حولك، فعّل «كشف الأصوات» في الإعدادات. هذه الميزة تجريبية.</string>
     <string name="cancel_button">إلغاء</string>
     <string name="set_barge">مقاطعة SENTIA بصوتي («قف»)</string>
+    <string name="wake_hello">مرحبا، أنا سنتيا.</string>
+    <string name="wake_here">أنا هنا.</string>
 </resources>

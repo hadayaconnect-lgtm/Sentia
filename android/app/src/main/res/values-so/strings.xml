@@ -97,4 +97,6 @@
     <string name="sounds_off_msg">Si aad u fahanto codadka agtaada ka dhaca, daar «Ogow codadka» dejinta. Shaqadani waa tijaabo.</string>
     <string name="cancel_button">Jooji</string>
     <string name="set_barge">Ku hakiso SENTIA codkayga («Jooji»)</string>
+    <string name="wake_hello">Salaan, waxaan ahay SENTIA.</string>
+    <string name="wake_here">Waan joogaa.</string>
 </resources>

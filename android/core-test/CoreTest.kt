@@ -188,6 +188,8 @@ fun main() {
     check("regarde encore / lis ça / décris la scène / ferme la caméra",
         cmd("Regarde encore") == VoiceCommand.LOOK_AGAIN && cmd("Lis ça") == VoiceCommand.READ_TEXT &&
         cmd("Décris la scène") == VoiceCommand.DESCRIBE_SCENE && cmd("Ferme la caméra.") == VoiceCommand.CLOSE_CAMERA)
+    check("billet / lis le panneau / regarde devant moi", cmd("Quel est ce billet ?") == VoiceCommand.BANKNOTE && cmd("Lis le panneau.") == VoiceCommand.READ_TEXT &&
+        cmd("Regarde devant moi") == VoiceCommand.LOOK_AGAIN && cmd("Lis le document") == VoiceCommand.READ_TEXT)
     check("anglais", cmd("Stop") == VoiceCommand.STOP && cmd("Go on") == VoiceCommand.CONTINUE && cmd("Look again") == VoiceCommand.LOOK_AGAIN && cmd("Close the camera") == VoiceCommand.CLOSE_CAMERA)
     check("arabe (avec voyelles et variantes d'écriture)", cmd("قِف") == VoiceCommand.STOP && cmd("تابع") == VoiceCommand.CONTINUE && cmd("أغلق الكاميرا") == VoiceCommand.CLOSE_CAMERA && cmd("انظر مرة أخرى") == VoiceCommand.LOOK_AGAIN)
     check("somali", cmd("Jooji") == VoiceCommand.STOP && cmd("Sii wad") == VoiceCommand.CONTINUE)

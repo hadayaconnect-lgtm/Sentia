@@ -6,7 +6,7 @@
 import { LANGUAGES } from "@/types";
 
 export const VIBRATION_PATTERNS = ["awake", "info", "attention", "detected"] as const;
-export const CAMERA_PURPOSES = ["scene", "document", "object", "color"] as const;
+export const CAMERA_PURPOSES = ["scene", "document", "text", "money", "object", "color"] as const;
 
 export interface ToolDef {
   name: string;
@@ -34,7 +34,7 @@ export const TOOLS: ToolDef[] = [
     description:
       "Prend une photo avec la caméra arrière du téléphone et vous la renvoie. À utiliser seulement quand la personne demande de regarder, lire, identifier un objet ou une couleur. Si la photo est floue ou mal cadrée, demandez à la personne de se repositionner puis rappelez l'outil.",
     input_schema: obj(
-      { purpose: { type: "string", enum: [...CAMERA_PURPOSES], description: "scene, document, object ou color" } },
+      { purpose: { type: "string", enum: [...CAMERA_PURPOSES], description: "scene (environnement), document ou text (lire du texte), money (billet de banque), object ou color" } },
       ["purpose"]
     ),
     sensitive: false,
