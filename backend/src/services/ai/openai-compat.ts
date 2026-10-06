@@ -19,7 +19,13 @@ export function toOpenAIMessages(system: string, messages: Message[]): OMessage[
         .filter((b) => b.type === "tool_use")
         .map((b) => {
           const u = b as { id: string; name: string; input: unknown };
-          return { id: u.id, type: "function", function: { name: u.name, arguments: JSON.stringify(u.input ?? {}) } };
+          return {
+            id: u.id,
+            type: "function",
+            function: { name: u.name, arguments: JSON.stringify(u.input ?? {}) },
+            // Gemini 3 exige une « signature de réflexion » sur les appels d'outils rejoués : on n'en garde pas, on envoie la valeur neutre prévue pour ça.
+            ...(env.aiProvider === "gemini" ? { extra_content: { google: { thought_signature: "skip_thought_signature_validator" } } } : {}),
+          };
         });
       out.push({ role: "assistant", content: text || null, ...(calls.length ? { tool_calls: calls } : {}) });
       continue;
@@ -95,7 +101,8 @@ export function openaiCompatProvider(): AIProvider {
         headers: { Authorization: `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: cfg.model,
-          max_tokens: request.maxTokens ?? 700,
+          // Gemini compte sa réflexion dans cette limite : plus large pour ne pas couper la réponse.
+          max_tokens: env.aiProvider === "gemini" ? Math.max(request.maxTokens ?? 700, 2048) : (request.maxTokens ?? 700),
           messages: toOpenAIMessages(request.system, request.messages),
           ...(request.tools?.length
             ? {
@@ -108,7 +115,10 @@ export function openaiCompatProvider(): AIProvider {
         }),
         signal: AbortSignal.timeout(60_000),
       });
-      if (!response.ok) throw new Error(`${cfg.label} a répondu HTTP ${response.status}`);
+      if (!response.ok) {
+        const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160);
+        throw new Error(`${cfg.label} a répondu HTTP ${response.status}${detail ? " : " + detail : ""}`);
+      }
       return { content: fromOpenAIResponse(await response.json()) };
     },
   };

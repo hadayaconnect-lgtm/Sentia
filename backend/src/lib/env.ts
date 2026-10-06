@@ -41,7 +41,7 @@ export const env = {
           label: "Gemini (Google)",
           baseUrl: clean(optional("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai")),
           apiKey: required("GEMINI_API_KEY"),
-          model: optional("GEMINI_MODEL", "gemini-2.5-flash"),
+          model: optional("GEMINI_MODEL", "gemini-3.1-flash-lite"),
         };
       case "openai":
         return {
