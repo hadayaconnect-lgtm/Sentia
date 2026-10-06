@@ -21,8 +21,11 @@ export function jsonResponse(body: unknown, status = 200, extraHeaders: Record<s
 
 export function errorResponse(error: unknown): Response {
   if (error instanceof ApiError) return jsonResponse({ error: error.code }, error.status);
-  console.error("Erreur serveur :", (error as Error)?.message ?? "inconnue");
-  return jsonResponse({ error: "server" }, 500);
+  const message = (error as Error)?.message ?? "inconnue";
+  console.error("Erreur serveur :", message);
+  // Pilote : on renvoie une courte raison (sans aucune clé : les longues chaînes sont masquées) pour qu'elle s'affiche sur le téléphone.
+  const detail = message.replace(/[A-Za-z0-9_\-.]{28,}/g, "…").replace(/\s+/g, " ").slice(0, 200);
+  return jsonResponse({ error: "server", detail }, 500);
 }
 
 /** Enveloppe commune : toute exception devient une réponse JSON propre, sans détail interne. */

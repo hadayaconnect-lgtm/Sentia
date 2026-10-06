@@ -91,35 +91,74 @@ export function fromOpenAIResponse(payload: unknown): Block[] {
   return out;
 }
 
+/** Erreur HTTP d'un fournisseur d'IA (le code permet de savoir si un nouvel essai a un sens). */
+export class AiHttpError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+/** Surcharge ou panne passagère (429, 5xx, délai dépassé, réseau) : un nouvel essai ou un autre modèle peut réussir. */
+export function isTransient(error: unknown): boolean {
+  if (error instanceof AiHttpError) return error.status === 429 || error.status >= 500;
+  const name = (error as { name?: string })?.name;
+  return name === "TimeoutError" || name === "AbortError" || error instanceof TypeError; // fetch réseau
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export function openaiCompatProvider(): AIProvider {
   const cfg = env.compat;
+
+  async function callOnce(model: string, request: GenerateRequest): Promise<GenerateResult> {
+    const response = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        // Gemini compte sa réflexion dans cette limite : plus large pour ne pas couper la réponse.
+        max_tokens: env.aiProvider === "gemini" ? Math.max(request.maxTokens ?? 700, 2048) : (request.maxTokens ?? 700),
+        messages: toOpenAIMessages(request.system, request.messages),
+        ...(request.tools?.length
+          ? {
+              tools: request.tools.map((t) => ({
+                type: "function",
+                function: { name: t.name, description: t.description, parameters: t.input_schema },
+              })),
+            }
+          : {}),
+      }),
+      signal: AbortSignal.timeout(22_000),
+    });
+    if (!response.ok) {
+      const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160);
+      throw new AiHttpError(`${cfg.label} (${model}) a répondu HTTP ${response.status}${detail ? " : " + detail : ""}`, response.status);
+    }
+    return { content: fromOpenAIResponse(await response.json()) };
+  }
+
+  /** Un essai + un nouvel essai après une courte pause si l'erreur est passagère. */
+  async function withRetry(model: string, request: GenerateRequest): Promise<GenerateResult> {
+    try {
+      return await callOnce(model, request);
+    } catch (e) {
+      if (!isTransient(e)) throw e;
+      await sleep(700);
+      return callOnce(model, request);
+    }
+  }
+
   return {
     label: cfg.label,
     async generate(request: GenerateRequest): Promise<GenerateResult> {
-      const response = await fetch(`${cfg.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: cfg.model,
-          // Gemini compte sa réflexion dans cette limite : plus large pour ne pas couper la réponse.
-          max_tokens: env.aiProvider === "gemini" ? Math.max(request.maxTokens ?? 700, 2048) : (request.maxTokens ?? 700),
-          messages: toOpenAIMessages(request.system, request.messages),
-          ...(request.tools?.length
-            ? {
-                tools: request.tools.map((t) => ({
-                  type: "function",
-                  function: { name: t.name, description: t.description, parameters: t.input_schema },
-                })),
-              }
-            : {}),
-        }),
-        signal: AbortSignal.timeout(60_000),
-      });
-      if (!response.ok) {
-        const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160);
-        throw new Error(`${cfg.label} a répondu HTTP ${response.status}${detail ? " : " + detail : ""}`);
+      try {
+        return await withRetry(cfg.model, request);
+      } catch (e) {
+        // Modèle surchargé (fréquent sur les modèles récents) : on tente le modèle de secours du même fournisseur.
+        const backup = env.aiProvider === "gemini" ? env.geminiFallbackModel : "";
+        if (backup && backup !== cfg.model && isTransient(e)) return withRetry(backup, request);
+        throw e;
       }
-      return { content: fromOpenAIResponse(await response.json()) };
     },
   };
 }

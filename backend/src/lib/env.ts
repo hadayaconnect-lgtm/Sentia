@@ -29,6 +29,8 @@ export const env = {
     const v = process.env.AI_PROVIDER;
     return v === "openai" || v === "gemini" || v === "llama" ? v : "anthropic";
   },
+  /** Modèle de secours si le modèle principal Gemini est surchargé (503) ou limité (429). Vide = pas de secours. */
+  get geminiFallbackModel() { return optional("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash"); },
   get anthropicApiKey() { return required("ANTHROPIC_API_KEY"); },
   get claudeModel() { return optional("CLAUDE_MODEL", "claude-sonnet-5-5"); },
 
