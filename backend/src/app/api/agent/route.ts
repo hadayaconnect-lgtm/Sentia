@@ -7,6 +7,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+/** Durée du tour côté serveur (IA comprise), pour que l'application sépare « réseau » et « IA » dans ses mesures. */
+const timing = (startedAt: number) => ({ "x-agent-ms": String(Date.now() - startedAt) });
+
 /**
  * Un tour de conversation avec SENTIA.
  * Entrée : { messages, language ("fr"|"en"|"so"|"ar"|"auto"), profile, localTime? }
@@ -22,13 +25,14 @@ export const POST = handle(async (request) => {
   const localTime = cleanText(body.localTime, 40) || undefined;
 
   const services = await loadServices();
+  const startedAt = Date.now();
   const result = await runAgentTurn({ messages, toolRounds, lang, profile, services, localTime });
 
   if (result.type === "final") {
     // Langue « auto » : les libellés des fiches suivent la langue de la requête, repli sur le français.
     const labelLang = lang ?? "fr";
-    return jsonResponse({ type: "final", text: finalizeText(result.text, services, labelLang) });
+    return jsonResponse({ type: "final", text: finalizeText(result.text, services, labelLang) }, 200, timing(startedAt));
   }
   if (result.calls.length > 4) throw new ApiError(502, "too_many_calls");
-  return jsonResponse({ type: "tool_calls", preface: finalizeText(result.preface, services, lang ?? "fr"), assistant: result.assistant, calls: result.calls });
+  return jsonResponse({ type: "tool_calls", preface: finalizeText(result.preface, services, lang ?? "fr"), assistant: result.assistant, calls: result.calls }, 200, timing(startedAt));
 });

@@ -15,8 +15,8 @@ export class ApiError extends Error {
   }
 }
 
-export function jsonResponse(body: unknown, status = 200): Response {
-  return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+export function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
+  return Response.json(body, { status, headers: { "Cache-Control": "no-store", ...extraHeaders } });
 }
 
 export function errorResponse(error: unknown): Response {

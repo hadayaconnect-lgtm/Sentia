@@ -123,7 +123,7 @@ class Speaker(context: Context, private val client: AgentClient) {
     private suspend fun speakLocal(engine: TextToSpeech, text: String): Boolean = suspendCancellableCoroutine { cont ->
         val id = "u" + (++counter)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {}
+            override fun onStart(utteranceId: String?) { if (utteranceId == id) Perf.ttsStarted(app) }
             override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
                 if (utteranceId == id) currentOffset = start
             }
@@ -154,7 +154,7 @@ class Speaker(context: Context, private val client: AgentClient) {
                 mp.setDataSource(file.absolutePath)
                 mp.setOnCompletionListener { release(mp); if (cont.isActive) cont.resume(true) }
                 mp.setOnErrorListener { _, _, _ -> release(mp); if (cont.isActive) cont.resume(false); true }
-                mp.setOnPreparedListener { it.start() }
+                mp.setOnPreparedListener { it.start(); Perf.ttsStarted(app) }
                 mp.prepareAsync()
             } catch (e: Exception) {
                 release(mp); if (cont.isActive) cont.resume(false)

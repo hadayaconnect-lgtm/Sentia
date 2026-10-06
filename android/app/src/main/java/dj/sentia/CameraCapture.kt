@@ -23,6 +23,7 @@ object CameraCapture {
 
     /** @return la photo JPEG en base64 (sans préfixe). */
     suspend fun capture(context: Context, owner: LifecycleOwner, highRes: Boolean): String {
+        val t0 = System.currentTimeMillis()
         val executor = ContextCompat.getMainExecutor(context)
         val provider = suspendCancellableCoroutine<ProcessCameraProvider> { cont ->
             val f = ProcessCameraProvider.getInstance(context)
@@ -34,14 +35,18 @@ object CameraCapture {
         try {
             provider.unbindAll()
             provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, imageCapture)
-            delay(1000) // le temps que l'exposition et la mise au point se stabilisent (jamais de photo avant que la caméra soit prête)
+            delay(READY_DELAY_MS) // le temps que l'exposition se stabilise ; une image noire est de toute façon détectée et reprise
+            Perf.put("cam_open", System.currentTimeMillis() - t0)
             suspend fun shoot(): ImageProxy = suspendCancellableCoroutine { cont ->
                 imageCapture.takePicture(executor, object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) { cont.resume(image) }
                     override fun onError(exception: ImageCaptureException) { cont.resumeWithException(exception) }
                 })
             }
-            var photo = shoot().use { toBase64(it, if (highRes) 1600 else 1280) }
+            val t1 = System.currentTimeMillis()
+            val frame = shoot()
+            Perf.put("shot", System.currentTimeMillis() - t1)
+            var photo = frame.use { toBase64(it, if (highRes) 1600 else 1280) }
             // Image quasi noire (caméra pas encore prête, objectif couvert) : une seule nouvelle tentative, après une courte pause.
             if (photo.second < MIN_BRIGHTNESS) {
                 delay(700)
@@ -58,7 +63,14 @@ object CameraCapture {
         val buffer = image.planes[0].buffer
         val bytes = ByteArray(buffer.remaining())
         buffer.get(bytes)
-        var bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: throw IllegalStateException("decode")
+        val t2 = System.currentTimeMillis()
+        // Décodage à taille réduite (puissance de 2) : un capteur de 12 Mpx n'a pas besoin d'être décodé en entier pour une image de 1280 px.
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
+        var bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: throw IllegalStateException("decode")
         val rotation = image.imageInfo.rotationDegrees
         val scale = maxSide.toFloat() / maxOf(bmp.width, bmp.height)
         if (rotation != 0 || scale < 1f) {
@@ -82,8 +94,11 @@ object CameraCapture {
             sum += (((c shr 16) and 0xFF) * 3 + ((c shr 8) and 0xFF) * 6 + (c and 0xFF)) / 10
             n++
         }
+        Perf.put("compress", System.currentTimeMillis() - t2)
+        Perf.photoSize(out.size())
         return Pair(Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP), (sum / n).toInt())
     }
 
     private const val MIN_BRIGHTNESS = 8
+    private const val READY_DELAY_MS = 600L
 }

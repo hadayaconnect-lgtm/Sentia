@@ -27,6 +27,7 @@ object WakeController {
         val now = System.currentTimeMillis()
         if (now - lastWake < COOLDOWN_MS) return
         lastWake = now
+        Perf.begin()
         Vibe.play(c, HapticPattern.AWAKE)
 
         // Allume l'écran un court instant si besoin.

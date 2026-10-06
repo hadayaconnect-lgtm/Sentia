@@ -113,7 +113,7 @@ class SpeechInput(private val context: Context) {
                 elapsed += stepMs
                 val sentiaSpeaking = gate?.invoke() == true
                 if (!heardSpeech && amp < floor) floor = amp
-                if (elapsed <= SETTLE_MS) continue // vibration de réveil, clic du bouton
+                if (elapsed <= (if (gate != null) BARGE_SETTLE_MS else SETTLE_MS)) continue // vibration de réveil, clic ; et début de la voix de SENTIA (écho)
 
                 val noise = if (floor == Int.MAX_VALUE) 0 else floor
                 val limit = if (sentiaSpeaking) BARGE_IN_LIMIT else minOf(maxOf(MIN_SPEECH_AMPLITUDE, noise * 3), MAX_SPEECH_LIMIT)
@@ -185,6 +185,7 @@ class SpeechInput(private val context: Context) {
         private const val PREROLL_CHUNKS = 5
         private const val FAINT_KEEP_CHUNKS = 60
         private const val SETTLE_MS = 300L
+        private const val BARGE_SETTLE_MS = 900L
         private const val MIN_SPEECH_AMPLITUDE = 550
         private const val MAX_SPEECH_LIMIT = 4000
         private const val FAINT_AMPLITUDE = 250

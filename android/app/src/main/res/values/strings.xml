@@ -49,6 +49,7 @@
     <string name="set_accessibility">Activer le service des touches de volume</string>
     <string name="set_test">Tester la secousse</string>
     <string name="set_code">Code d\'accès</string>
+    <string name="set_change_profile">Changer de mode (aveugle, sourd…)</string>
     <string name="set_save">Enregistrer</string>
     <string name="saved">Enregistré.</string>
     <string name="lang_auto">Automatique</string>
@@ -102,6 +103,7 @@
     <string name="wait_moment">Attendez un instant, je regarde.</string>
     <string name="wake_listen">Je vous écoute.</string>
     <string name="orb_desc">SENTIA. Touchez deux fois pour que SENTIA regarde devant vous.</string>
+    <string name="analysis_still">Je regarde encore, un instant.</string>
     <string name="analysis_failed">Je n\'arrive pas à identifier clairement ce qui se trouve devant vous. Essayez de déplacer légèrement le téléphone.</string>
     <string name="set_overlay">Autoriser l\'affichage par-dessus les autres applications</string>
     <string name="set_app_perms">Autorisations de SENTIA (HyperOS : fenêtres en arrière-plan)</string>

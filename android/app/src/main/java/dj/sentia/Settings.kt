@@ -32,19 +32,11 @@ class Settings(context: Context) {
         get() = p.getBoolean("volume", true)
         set(v) = p.edit().putBoolean("volume", v).apply()
 
-    /** Par défaut : réponses parlées sauf pour les personnes sourdes. */
-    var voiceReplies: Boolean
-        get() = if (p.contains("voice")) p.getBoolean("voice", true) else profile != "deaf"
-        set(v) = p.edit().putBoolean("voice", v).apply()
+    /** La voix fait partie du fonctionnement principal : seule une personne sourde seule ne l'entend pas. */
+    val voiceReplies: Boolean get() = profile != "deaf"
 
-    /**
-     * Interrompre SENTIA en parlant (« Stop » dit pendant qu'elle parle). Désactivé par défaut : micro ouvert pendant la voix =
-     * risque d'écho (SENTIA s'entend elle-même) selon le téléphone. À activer pour essayer. Le bouton Stop et la secousse
-     * interrompent toujours.
-     */
-    var bargeIn: Boolean
-        get() = p.getBoolean("barge", false) // désactivé par défaut : d'abord une conversation fiable (voix finie, puis écoute)
-        set(v) = p.edit().putBoolean("barge", v).apply()
+    /** « Stop » à la voix pendant que SENTIA parle : toujours actif (le micro filtre l'écho et ignore le début de chaque phrase). */
+    val bargeIn: Boolean get() = true
 
     // Diagnostic de la veille (affiché dans les Réglages) : jamais envoyé nulle part.
     var diagServiceAt: Long
@@ -62,13 +54,15 @@ class Settings(context: Context) {
     var diagSamplesAt: Long
         get() = p.getLong("d_samples", 0L)
         set(v) = p.edit().putLong("d_samples", v).apply()
+    var diagPerf: String
+        get() = p.getString("d_perf", "") ?: ""
+        set(v) = p.edit().putString("d_perf", v).apply()
     var diagServiceError: String
         get() = p.getString("d_err", "") ?: ""
         set(v) = p.edit().putString("d_err", v).apply()
 
-    var soundsEnabled: Boolean
-        get() = p.getBoolean("sounds", false)
-        set(v) = p.edit().putBoolean("sounds", v).apply()
+    /** Détection des sons : expérimentale (modèle non fourni avec l'application), donc désactivée tant qu'elle n'est pas fiable. */
+    val soundsEnabled: Boolean get() = false
 
     var accessCode: String
         get() = p.getString("code", "") ?: ""

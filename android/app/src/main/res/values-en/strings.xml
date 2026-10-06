@@ -49,6 +49,7 @@
     <string name="set_accessibility">Turn on the volume keys service</string>
     <string name="set_test">Test the shake</string>
     <string name="set_code">Access code</string>
+    <string name="set_change_profile">Change mode (blind, deaf…)</string>
     <string name="set_save">Save</string>
     <string name="saved">Saved.</string>
     <string name="lang_auto">Automatic</string>
@@ -102,6 +103,7 @@
     <string name="wait_moment">One moment, I\'m looking.</string>
     <string name="wake_listen">I\'m listening.</string>
     <string name="orb_desc">SENTIA. Double-tap so SENTIA looks in front of you.</string>
+    <string name="analysis_still">I\'m still looking, one moment.</string>
     <string name="analysis_failed">I can\'t clearly identify what is in front of you. Try moving the phone slightly.</string>
     <string name="set_overlay">Allow display over other apps</string>
     <string name="set_app_perms">SENTIA permissions (HyperOS: pop-ups in background)</string>

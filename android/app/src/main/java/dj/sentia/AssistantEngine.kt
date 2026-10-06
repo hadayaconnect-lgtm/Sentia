@@ -1,8 +1,7 @@
 package dj.sentia
 
 import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import java.time.OffsetDateTime
@@ -11,9 +10,11 @@ import java.time.format.DateTimeFormatter
 /**
  * Un tour complet : demande de l'utilisateur → (outils éventuels, au plus 5 tours) → réponse finale.
  *
- * Analyse caméra : au plus [ANALYSIS_MAX_MS] (10 s) entre le début de l'analyse (début de la prise de photo) et la réponse
- * de l'IA. Au-delà, l'analyse s'arrête net (AgentException TIMEOUT) : jamais d'analyse sans fin, jamais de boucle continue.
- * 10 s est un MAXIMUM : dès que la réponse est prête, on la dit.
+ * Analyse caméra, trois délais distincts (voir les constantes) :
+ *  - la prise de photo (caméra + capture + compression) : [CAPTURE_MAX_MS] ;
+ *  - toute l'analyse, de la photo à la réponse de l'IA : [ANALYSIS_HARD_MS] (au-delà : arrêt net, jamais de boucle sans fin) ;
+ *  - à [HOLD_AT_MS] sans réponse, l'application dit « Je regarde encore » (jamais de silence long pour une personne aveugle).
+ * Ce sont des MAXIMUMS : dès que la réponse est prête, on la dit. Un échec RÉSEAU (pas un délai) est retenté une fois.
  */
 class AssistantEngine(private val context: Context, private val client: AgentClient, private val tools: ToolExecutor) {
     val conversation = Conversation()
@@ -26,6 +27,7 @@ class AssistantEngine(private val context: Context, private val client: AgentCli
 
     /** Question libre. Si l'IA demande la caméra, le chronomètre de 10 s démarre à ce moment-là. */
     suspend fun ask(text: String, onPreface: (String) -> Unit = {}): String {
+        Perf.beginIfStale()
         analysisStart = 0L
         currentId++
         conversation.addUserText(text)
@@ -37,25 +39,29 @@ class AssistantEngine(private val context: Context, private val client: AgentCli
      * elle-même, tout de suite, et l'envoie avec la demande en un seul aller-retour (plus rapide qu'un passage par l'outil).
      */
     suspend fun askLook(prompt: String, onPreface: (String) -> Unit = {}): String {
+        Perf.beginIfStale()
         if (!tools.ensureCamera()) return context.getString(R.string.tool_denied)
         currentId++
         // Nouvelle analyse : on oublie les anciennes photos, seule la photo de CETTE analyse est envoyée à l'IA.
         conversation.dropImages()
         analysisStart = System.currentTimeMillis()
-        val photo = withTimeoutOrNull(ANALYSIS_MAX_MS) { tools.takePhoto() }
+        Perf.mark("cam_start")
+        val photo = withTimeoutOrNull(CAPTURE_MAX_MS) { tools.takePhoto() }
             ?: throw AgentException(AgentException.Kind.TIMEOUT, "capture")
+        Perf.mark("cam_done")
         conversation.addUserBlocks(JSONArray().put(Conversation.image(photo)).put(Conversation.text(prompt)))
         return run(onPreface)
     }
 
     private fun remainingMs(): Long =
-        if (analysisStart == 0L) 0L else ANALYSIS_MAX_MS - (System.currentTimeMillis() - analysisStart)
+        if (analysisStart == 0L) 0L else ANALYSIS_HARD_MS - (System.currentTimeMillis() - analysisStart)
 
     private suspend fun run(onPreface: (String) -> Unit): String {
         val settings = context.settings
         val id = currentId
         try {
             var rounds = 0
+            var retried = false
             while (true) {
                 conversation.compact()
                 val localTime = OffsetDateTime.now().withNano(0).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
@@ -63,11 +69,22 @@ class AssistantEngine(private val context: Context, private val client: AgentCli
                 val deadline = if (analysisStart == 0L) 0L else remainingMs().also {
                     if (it < MIN_CALL_MS) throw AgentException(AgentException.Kind.TIMEOUT, "budget")
                 }
-                val reply = client.agent(conversation.messages, settings.language, settings.profile, localTime, deadline)
+                val reply = try {
+                    client.agent(conversation.messages, settings.language, settings.profile, localTime, deadline)
+                } catch (e: AgentException) {
+                    // Coupure réseau brève (signal faible, changement d'antenne) : une seule nouvelle tentative, s'il reste du temps.
+                    if (e.kind == AgentException.Kind.NETWORK && !retried && (analysisStart == 0L || remainingMs() > RETRY_MIN_LEFT_MS)) {
+                        retried = true
+                        delay(400)
+                        continue
+                    }
+                    throw e
+                }
                 // Réponse d'une analyse devenue obsolète (une nouvelle demande a démarré entre-temps) : on l'ignore.
                 if (id != currentId) throw kotlinx.coroutines.CancellationException("analyse obsolète")
                 when (reply) {
                     is AgentReply.Final -> {
+                        Perf.mark("ai_done")
                         conversation.addAssistantText(reply.text.ifBlank { "…" })
                         return reply.text
                     }
@@ -96,7 +113,7 @@ class AssistantEngine(private val context: Context, private val client: AgentCli
         if (analysisStart == 0L) analysisStart = System.currentTimeMillis()
         val left = remainingMs()
         if (left < MIN_CALL_MS) throw AgentException(AgentException.Kind.TIMEOUT, "budget")
-        return withTimeoutOrNull(left) { tools.run(call.name, call.input) }
+        return withTimeoutOrNull(minOf(left, CAPTURE_MAX_MS)) { tools.run(call.name, call.input) }
             ?: throw AgentException(AgentException.Kind.TIMEOUT, "capture")
     }
 
@@ -119,8 +136,14 @@ class AssistantEngine(private val context: Context, private val client: AgentCli
     fun reset() = conversation.clear()
 
     companion object {
-        /** Durée MAXIMALE d'une analyse caméra, de la prise de photo à la réponse de l'IA. */
-        const val ANALYSIS_MAX_MS = 10_000L
+        /** Prise de photo : démarrage de la caméra + exposition + capture + compression (estimation : 1,5 à 3 s ; la mesure réelle s'affiche dans Réglages). */
+        const val CAPTURE_MAX_MS = 6_000L
+        /** Toute l'analyse, de la photo à la réponse : envoi + serveur + IA (estimation : 4 à 12 s selon le réseau ; mesure réelle dans Réglages). */
+        const val ANALYSIS_HARD_MS = 30_000L
+        /** Sans réponse à ce moment, l'application dit « Je regarde encore » (une seule fois). */
+        const val HOLD_AT_MS = 10_000L
+        /** Temps minimal restant pour retenter après un échec réseau. */
+        private const val RETRY_MIN_LEFT_MS = 6_000L
         /** Sous ce temps restant, inutile de lancer un appel à l'IA : l'analyse s'arrête. */
         private const val MIN_CALL_MS = 1_500L
     }

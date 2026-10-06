@@ -266,14 +266,16 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
      */
     private fun buildActions() {
         val profile = settings.profile
-        val key = profile + "/" + settings.soundsEnabled
+        val key = profile
         if (builtForProfile == key && actions.childCount > 0) return
         builtForProfile = key
         actions.removeAllViews()
 
         val speak = bigButton("🗣️ " + getString(R.string.btn_speak), getString(R.string.btn_speak), 2f) { onSpeakButton() }
         val write = bigButton("✍️ " + getString(R.string.btn_write), getString(R.string.btn_write), 2f) { toggleWrite() }
-        val sounds = bigButton("🔊 " + getString(R.string.btn_sounds), getString(R.string.btn_sounds), 1f) { onSoundsButton() }
+        fun alone(b: android.widget.Button) = b.apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f).apply { topMargin = dp(8) }
+        }
         val seeLabel = SpannableString("📷 " + getString(R.string.btn_see) + "\n" + getString(R.string.see_hint)).also {
             val start = it.indexOf('\n') + 1
             it.setSpan(RelativeSizeSpan(0.65f), start, it.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
@@ -286,25 +288,21 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
                 // Écran minimal : deux grands boutons, ni clavier ni champ d'écriture. L'action principale est la secousse.
                 (see.layoutParams as LinearLayout.LayoutParams).weight = 3f
                 actions.addView(see); actions.addView(speak)
-                if (settings.soundsEnabled) {
-                    sounds.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f).apply { topMargin = dp(8) }
-                    actions.addView(sounds)
-                }
             }
             "deaf" -> {
                 write.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 2f).apply { topMargin = dp(8) }
                 (see.layoutParams as LinearLayout.LayoutParams).weight = 1.5f
                 actions.addView(write); actions.addView(see)
-                actions.addView(rowOf(speak, sounds, 1f))
+                actions.addView(alone(speak))
             }
             "both" -> {
                 actions.addView(write); actions.addView(see)
-                actions.addView(rowOf(speak, sounds, 1f))
+                actions.addView(alone(speak))
             }
             else -> {
                 (see.layoutParams as LinearLayout.LayoutParams).weight = 1.5f
                 actions.addView(speak); actions.addView(see)
-                actions.addView(rowOf(write, sounds, 1f))
+                actions.addView(alone(write))
             }
         }
     }
@@ -314,6 +312,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private fun handleWake(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_WAKE, false) != true) return
         intent?.removeExtra(EXTRA_WAKE)
+        Perf.beginIfStale(); Perf.mark("screen")
         val voice = !settings.isDeafish
         orb.wake() // la boule bat plus vivement ~2 s (la vibration de réveil est déjà faite par WakeController)
 
@@ -377,19 +376,6 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(wait, replyLang(wait)) }
         }
         conversation(first = Lang.cameraPrompt(Lang.ui(settings.language)), voice = voice)
-    }
-
-    private fun onSoundsButton() {
-        if (!settings.soundsEnabled) {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.sounds_off_title)
-                .setMessage(R.string.sounds_off_msg)
-                .setPositiveButton(R.string.settings_button) { _, _ -> startActivity(Intent(this, SettingsActivity::class.java)) }
-                .setNegativeButton(R.string.cancel_button, null)
-                .show()
-            return
-        }
-        launchNew { conversation(first = Lang.soundsPrompt(Lang.ui(settings.language)), voice = !settings.isDeafish) }
     }
 
     private fun toggleWrite() {
@@ -491,22 +477,32 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         speaker.takeRemainder() // une nouvelle question remplace ce qu'il restait à dire
         status.text = getString(R.string.thinking)
         reply.text = ""
-        // Demande de regarder : photo + analyse en 10 secondes MAXIMUM, puis réponse dite à voix haute.
-        val look = isLookPrompt(prompt)
+        // Demande de regarder : photo (6 s max) + analyse (30 s max, « Je regarde encore » à 10 s), puis réponse dite à voix haute.
+        val look = isLookPrompt(prompt) || needsFreshLook(prompt)
         orb.mode = if (look) OrbView.Mode.ANALYZING_CAMERA else OrbView.Mode.THINKING
         val onPreface: (String) -> Unit = { preface ->
             reply.text = preface
             if (voiceOn && greetJob?.isActive != true) lifecycleScope.launch { speaker.say(preface, replyLang(preface)) }
         }
+        // Jamais de long silence : si l'analyse dure, SENTIA le dit une fois (à 10 s), puis continue d'attendre jusqu'au délai maximal.
+        val hold = if (look && voiceOn && !settings.isDeafish) lifecycleScope.launch {
+            delay(AssistantEngine.HOLD_AT_MS)
+            sayChecked(getString(R.string.analysis_still), Lang.ui(settings.language))
+            orb.mode = OrbView.Mode.ANALYZING_CAMERA
+        } else null
         val answer = try {
-            if (look) engine.askLook(prompt, onPreface) else engine.ask(prompt, onPreface)
-        } catch (e: AgentException) {
-            if (e.kind == AgentException.Kind.TIMEOUT) getString(R.string.analysis_failed) // 10 s écoulées : message dit à voix haute
-            else { showError(messageFor(e), detailFor(e)); return ENDED }
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            showError(getString(R.string.error_generic)); return ENDED
+            try {
+                if (look) engine.askLook(prompt, onPreface) else engine.ask(prompt, onPreface)
+            } catch (e: AgentException) {
+                if (e.kind == AgentException.Kind.TIMEOUT) getString(R.string.analysis_failed) // délai maximal écoulé : message dit à voix haute
+                else { showError(messageFor(e), detailFor(e)); return ENDED }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                showError(getString(R.string.error_generic)); return ENDED
+            }
+        } finally {
+            hold?.cancel()
         }
         greetJob?.join() // le salut finit avant la description
         greetJob = null
@@ -516,6 +512,13 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         if (settings.isDeafish) Vibe.play(this, HapticPattern.INFO)
         return deliver(answer, voice)
     }
+
+    /**
+     * Questions sur l'instant présent ou la sécurité (« Est-ce que je peux avancer ? », « C'est libre ? ») : la scène a peut-être
+     * changé depuis la dernière photo, on en prend une nouvelle. Les autres questions de suivi (« Qu'est-ce qu'il y a à gauche ? »)
+     * gardent le contexte de la scène déjà analysée : plus rapide et cohérent.
+     */
+    private fun needsFreshLook(p: String): Boolean = FRESH_LOOK.containsMatchIn(p)
 
     private fun isLookPrompt(p: String): Boolean {
         val l = Lang.ui(settings.language)
@@ -699,6 +702,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     }
 
     companion object {
+        private val FRESH_LOOK = Regex("(avanc|march|travers|je peux passer|peut-on passer|libre|dégag|dangere|devant moi|droit devant|maintenant|obstacle|can i (walk|go|move|cross)|is it (clear|safe)|in front of me|right now)", RegexOption.IGNORE_CASE)
         const val EXTRA_WAKE = "wake"
         const val EXTRA_SOURCE = "source"
         @Volatile var visible = false

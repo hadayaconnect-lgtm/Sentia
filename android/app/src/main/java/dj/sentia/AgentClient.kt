@@ -23,7 +23,28 @@ class AgentClient(context: Context) {
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(70, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        // Mesure des étapes réseau de l'appel à l'IA (envoi / attente serveur + IA / réception), gardée sur le téléphone.
+        .eventListenerFactory(object : okhttp3.EventListener.Factory {
+            override fun create(call: okhttp3.Call): okhttp3.EventListener =
+                if (call.request().url.encodedPath.endsWith("/api/agent")) NetPerf() else okhttp3.EventListener.NONE
+        })
         .build()
+
+    private class NetPerf : okhttp3.EventListener() {
+        private var reqStart = 0L
+        private var reqEnd = 0L
+        private var respStart = 0L
+        override fun requestBodyStart(call: okhttp3.Call) { reqStart = System.nanoTime() }
+        override fun requestBodyEnd(call: okhttp3.Call, byteCount: Long) { reqEnd = System.nanoTime() }
+        override fun responseHeadersStart(call: okhttp3.Call) { respStart = System.nanoTime() }
+        override fun responseBodyEnd(call: okhttp3.Call, byteCount: Long) {
+            if (reqStart == 0L || reqEnd == 0L || respStart == 0L) return
+            val now = System.nanoTime()
+            Perf.put("upload", (reqEnd - reqStart) / 1_000_000)
+            Perf.put("wait", (respStart - reqEnd) / 1_000_000)
+            Perf.put("download", (now - respStart) / 1_000_000)
+        }
+    }
 
     private fun base(): String {
         val url = settings.serverUrl
@@ -88,6 +109,7 @@ class AgentClient(context: Context) {
             .put("localTime", localTime)
             .toString().toRequestBody("application/json".toMediaType())
         return execute(builder("/api/agent").post(body).build(), deadlineMs) { r ->
+            r.header("x-agent-ms")?.toLongOrNull()?.let { Perf.put("server", it) }
             val json = JSONObject(r.body!!.string())
             if (json.optString("type") == "final") {
                 AgentReply.Final(json.optString("text"))
