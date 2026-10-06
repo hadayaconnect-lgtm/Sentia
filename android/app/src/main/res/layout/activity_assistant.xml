@@ -1,23 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:padding="16dp"
     android:background="@color/black">
 
+    <!-- Identité : SENTIA est un assistant IA, présent et disponible. -->
+    <TextView
+        android:id="@+id/identTitle"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center" android:textColor="@color/yellow"
+        android:textSize="34sp" android:textStyle="bold" />
+    <TextView
+        android:id="@+id/identSubtitle"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center" android:textColor="@color/white" android:textSize="17sp"
+        android:text="@string/ident_subtitle" />
+
+    <!-- La présence de SENTIA : boule bleue qui bat doucement. Décorative : le lecteur d'écran l'ignore. -->
+    <dj.sentia.OrbView
+        android:id="@+id/orb"
+        android:layout_width="match_parent" android:layout_height="150dp"
+        android:importantForAccessibility="no" />
+
     <TextView
         android:id="@+id/status"
         android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="0dp"
         android:accessibilityLiveRegion="polite"
         android:textColor="@color/yellow" android:textSize="22sp" android:textStyle="bold"
         android:gravity="center" android:minHeight="48dp" />
 
     <ScrollView
         android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
-        android:layout_marginTop="8dp" android:layout_marginBottom="8dp">
+        android:layout_marginBottom="6dp">
         <TextView
             android:id="@+id/reply"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textColor="@color/white" android:textSize="28sp"
+            android:textColor="@color/white" android:textSize="26sp"
             android:lineSpacingMultiplier="1.15" android:padding="8dp" />
     </ScrollView>
 
@@ -37,29 +57,36 @@
             android:text="@string/send" android:layout_marginStart="8dp" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/speakBtn" style="@style/Sentia.BigButton"
-        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
-        android:text="@string/speak_button" android:textSize="40sp" />
+    <!-- Les deux gestes de réveil, toujours rappelés. -->
+    <TextView
+        android:id="@+id/hintShake"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center" android:textColor="@color/white" android:textSize="16sp" />
+    <TextView
+        android:id="@+id/hintVolume"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center" android:textColor="@color/white" android:textSize="16sp"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Boutons principaux : remplis et ordonnés selon le profil (voir AssistantActivity.buildActions). -->
+    <LinearLayout
+        android:id="@+id/actions"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="3"
+        android:orientation="vertical" />
 
     <LinearLayout
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="horizontal" android:layout_marginTop="8dp">
-        <Button android:id="@+id/cameraBtn" style="@style/Sentia.BigButton"
-            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-            android:text="@string/camera_button" android:textSize="18sp" />
-        <Button android:id="@+id/writeBtn" style="@style/Sentia.BigButton"
-            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="@string/write_button" android:textSize="18sp" />
         <Button android:id="@+id/repeatBtn" style="@style/Sentia.BigButton"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="@string/repeat_button" android:textSize="17sp" />
+        <Button android:id="@+id/stopBtn" style="@style/Sentia.BigButton"
+            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:text="@string/repeat_button" android:textSize="18sp" />
+            android:text="@string/stop_button" android:textSize="17sp" />
+        <Button android:id="@+id/settingsBtn" style="@style/Sentia.BigButton"
+            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="@string/settings_button" android:textSize="17sp" />
     </LinearLayout>
-
-    <Button android:id="@+id/settingsBtn" style="@style/Sentia.BigButton"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/settings_button" android:textSize="18sp" />
 </LinearLayout>
