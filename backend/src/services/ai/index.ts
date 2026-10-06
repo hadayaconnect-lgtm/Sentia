@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 import { anthropicProvider } from "./anthropic";
-import { isTransient, openaiCompatProvider } from "./openai-compat";
+import { brief, isTransient, openaiCompatProvider } from "./openai-compat";
 import type { AIProvider } from "./types";
 
 export type { AIProvider, GenerateRequest, GenerateResult } from "./types";
@@ -17,8 +17,13 @@ export function getProvider(): AIProvider {
       try {
         return await primary.generate(request);
       } catch (e) {
-        if (isTransient(e)) return anthropicProvider.generate(request);
-        throw e;
+        if (!isTransient(e)) throw e;
+        console.error("Gemini indisponible, repli sur Claude :", (e as Error).message);
+        try {
+          return await anthropicProvider.generate(request);
+        } catch (e2) {
+          throw new Error(`${brief(e)} ; Claude : ${brief(e2)}`);
+        }
       }
     },
   };

@@ -93,14 +93,20 @@ export function fromOpenAIResponse(payload: unknown): Block[] {
 
 /** Erreur HTTP d'un fournisseur d'IA (le code permet de savoir si un nouvel essai a un sens). */
 export class AiHttpError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly model = "", readonly transientSeen = false) {
     super(message);
   }
 }
 
+/** Résumé très court d'une erreur (« gemini-3.1-flash-lite 503 ») : l'application n'affiche que le début du message. */
+export function brief(error: unknown): string {
+  if (error instanceof AiHttpError) return `${error.model ? error.model + " " : ""}${error.status}`;
+  return ((error as Error)?.message ?? "erreur").replace(/\s+/g, " ").slice(0, 70);
+}
+
 /** Surcharge ou panne passagère (429, 5xx, délai dépassé, réseau) : un nouvel essai ou un autre modèle peut réussir. */
 export function isTransient(error: unknown): boolean {
-  if (error instanceof AiHttpError) return error.status === 429 || error.status >= 500;
+  if (error instanceof AiHttpError) return error.transientSeen || error.status === 429 || error.status >= 500;
   const name = (error as { name?: string })?.name;
   return name === "TimeoutError" || name === "AbortError" || error instanceof TypeError; // fetch réseau
 }
@@ -132,7 +138,7 @@ export function openaiCompatProvider(): AIProvider {
     });
     if (!response.ok) {
       const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160);
-      throw new AiHttpError(`${cfg.label} (${model}) a répondu HTTP ${response.status}${detail ? " : " + detail : ""}`, response.status);
+      throw new AiHttpError(`${cfg.label} (${model}) a répondu HTTP ${response.status}${detail ? " : " + detail : ""}`, response.status, model);
     }
     return { content: fromOpenAIResponse(await response.json()) };
   }
@@ -156,7 +162,15 @@ export function openaiCompatProvider(): AIProvider {
       } catch (e) {
         // Modèle surchargé (fréquent sur les modèles récents) : on tente le modèle de secours du même fournisseur.
         const backup = env.aiProvider === "gemini" ? env.geminiFallbackModel : "";
-        if (backup && backup !== cfg.model && isTransient(e)) return withRetry(backup, request);
+        if (backup && backup !== cfg.model && isTransient(e)) {
+          try {
+            return await withRetry(backup, request);
+          } catch (e2) {
+            console.error("Gemini (modèle principal) :", (e as Error).message);
+            // Message court et complet : « principal ; secours » (la cause du premier échec reste visible).
+            throw new AiHttpError(`Gemini ${brief(e)} ; ${brief(e2)}`, (e2 as AiHttpError).status ?? 503, backup, true);
+          }
+        }
         throw e;
       }
     },

@@ -83,7 +83,7 @@ class AgentClient(context: Context) {
                         val result: Result<T> = try {
                             if (r.code == 401 || r.code == 403) throw AgentException(AgentException.Kind.DENIED, "HTTP ${r.code}")
                             if (!r.isSuccessful) {
-                                val detail = try { r.body?.string()?.take(120) ?: "" } catch (_: Exception) { "" }
+                                val detail = try { r.body?.string()?.take(260) ?: "" } catch (_: Exception) { "" }
                                 throw AgentException(AgentException.Kind.SERVER, "HTTP ${r.code} $detail".trim())
                             }
                             Result.success(parse(r))
