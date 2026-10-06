@@ -102,4 +102,5 @@
     <string name="wait_moment">انتظر لحظة، أنا أنظر.</string>
     <string name="wake_listen">أنا أستمع إليك.</string>
     <string name="orb_desc">سنتيا. المس مرتين لكي تنظر سنتيا أمامك.</string>
+    <string name="analysis_failed">لا أستطيع تحديد ما أمامك بوضوح. حاول تحريك الهاتف قليلا.</string>
 </resources>

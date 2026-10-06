@@ -479,13 +479,17 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         status.text = getString(R.string.thinking)
         orb.mode = OrbView.Mode.THINKING
         reply.text = ""
+        // Demande de regarder : photo + analyse en 10 secondes MAXIMUM, puis réponse dite à voix haute.
+        val look = isLookPrompt(prompt)
+        val onPreface: (String) -> Unit = { preface ->
+            reply.text = preface
+            if (settings.voiceReplies && greetJob?.isActive != true) lifecycleScope.launch { speaker.say(preface, replyLang(preface)) }
+        }
         val answer = try {
-            engine.ask(prompt) { preface ->
-                reply.text = preface
-                if (settings.voiceReplies && greetJob?.isActive != true) lifecycleScope.launch { speaker.say(preface, replyLang(preface)) }
-            }
+            if (look) engine.askLook(prompt, onPreface) else engine.ask(prompt, onPreface)
         } catch (e: AgentException) {
-            showError(messageFor(e)); return ENDED
+            if (e.kind == AgentException.Kind.TIMEOUT) getString(R.string.analysis_failed) // 10 s écoulées : message dit à voix haute
+            else { showError(messageFor(e)); return ENDED }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -498,6 +502,12 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         reply.text = answer
         if (settings.isDeafish) Vibe.play(this, HapticPattern.INFO)
         return deliver(answer, voice)
+    }
+
+    private fun isLookPrompt(p: String): Boolean {
+        val l = Lang.ui(settings.language)
+        return p == Lang.cameraPrompt(l) || p == Lang.lookAgainPrompt(l) || p == Lang.readTextPrompt(l) ||
+            p == Lang.describeScenePrompt(l) || p == Lang.banknotePrompt(l)
     }
 
     /** Dit la réponse (voix prioritaire pour les profils aveugle / malvoyant) et, en mode voix, écoute la suite. */

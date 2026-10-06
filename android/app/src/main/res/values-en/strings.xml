@@ -102,4 +102,5 @@
     <string name="wait_moment">One moment, I\'m looking.</string>
     <string name="wake_listen">I\'m listening.</string>
     <string name="orb_desc">SENTIA. Double-tap so SENTIA looks in front of you.</string>
+    <string name="analysis_failed">I can\'t clearly identify what is in front of you. Try moving the phone slightly.</string>
 </resources>

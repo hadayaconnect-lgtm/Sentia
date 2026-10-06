@@ -102,4 +102,5 @@
     <string name="wait_moment">Attendez un instant, je regarde.</string>
     <string name="wake_listen">Je vous écoute.</string>
     <string name="orb_desc">SENTIA. Touchez deux fois pour que SENTIA regarde devant vous.</string>
+    <string name="analysis_failed">Je n\'arrive pas à identifier clairement ce qui se trouve devant vous. Essayez de déplacer légèrement le téléphone.</string>
 </resources>

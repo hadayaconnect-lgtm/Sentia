@@ -105,5 +105,5 @@ sealed class AgentReply {
 }
 
 class AgentException(val kind: Kind, message: String? = null) : Exception(message) {
-    enum class Kind { NETWORK, CONFIG, SERVER, DENIED }
+    enum class Kind { NETWORK, CONFIG, SERVER, DENIED, TIMEOUT }
 }

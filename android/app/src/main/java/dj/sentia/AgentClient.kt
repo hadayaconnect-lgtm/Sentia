@@ -36,27 +36,33 @@ class AgentClient(context: Context) {
         return b
     }
 
-    private fun <T> execute(request: Request, parse: (okhttp3.Response) -> T): T {
+    /** @param deadlineMs durée totale maximale de la requête (0 = pas de limite particulière). */
+    private fun <T> execute(request: Request, deadlineMs: Long = 0, parse: (okhttp3.Response) -> T): T {
         try {
-            http.newCall(request).execute().use { r ->
+            val call = http.newCall(request)
+            if (deadlineMs > 0) call.timeout().timeout(deadlineMs, TimeUnit.MILLISECONDS)
+            call.execute().use { r ->
                 if (r.code == 401 || r.code == 403) throw AgentException(AgentException.Kind.DENIED)
                 if (!r.isSuccessful) throw AgentException(AgentException.Kind.SERVER, "HTTP ${r.code}")
                 return parse(r)
             }
+        } catch (e: java.io.InterruptedIOException) {
+            // Délai d'analyse dépassé (call.timeout) — ou délai réseau ordinaire si aucune limite n'était demandée.
+            throw AgentException(if (deadlineMs > 0) AgentException.Kind.TIMEOUT else AgentException.Kind.NETWORK, e.message)
         } catch (e: IOException) {
             throw AgentException(AgentException.Kind.NETWORK, e.message)
         }
     }
 
     /** Un tour de conversation. Appel bloquant : à lancer sur Dispatchers.IO. */
-    fun agent(messages: JSONArray, language: String, profile: String, localTime: String): AgentReply {
+    fun agent(messages: JSONArray, language: String, profile: String, localTime: String, deadlineMs: Long = 0): AgentReply {
         val body = JSONObject()
             .put("messages", messages)
             .put("language", language)
             .put("profile", profile.ifEmpty { "other" })
             .put("localTime", localTime)
             .toString().toRequestBody("application/json".toMediaType())
-        return execute(builder("/api/agent").post(body).build()) { r ->
+        return execute(builder("/api/agent").post(body).build(), deadlineMs) { r ->
             val json = JSONObject(r.body!!.string())
             if (json.optString("type") == "final") {
                 AgentReply.Final(json.optString("text"))

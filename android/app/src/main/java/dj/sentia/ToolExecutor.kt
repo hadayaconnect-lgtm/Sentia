@@ -62,10 +62,18 @@ class ToolExecutor(private val host: ToolHost, private val settings: Settings) {
                 "start_navigation" -> navigate(input.optString("destination"))
                 else -> ToolOutput.text(c.getString(R.string.tool_unavailable), true)
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e // le délai d'analyse (withTimeoutOrNull) ne doit pas être avalé
         } catch (e: Exception) {
             ToolOutput.text("Erreur : " + (e.message ?: e.javaClass.simpleName), true)
         }
     }
+
+    /** Permission caméra (demandée avant de lancer le chronomètre d'analyse : la boîte de dialogue ne compte pas). */
+    suspend fun ensureCamera(): Boolean = host.ensurePermission(Manifest.permission.CAMERA)
+
+    /** Prend UNE photo (JPEG base64). Annulable. */
+    suspend fun takePhoto(): String = CameraCapture.capture(host.context, host.lifecycleOwner, highRes = true)
 
     private suspend fun capture(purpose: String): ToolOutput {
         val c = host.context
