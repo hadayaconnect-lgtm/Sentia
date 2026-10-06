@@ -99,4 +99,7 @@
     <string name="set_barge">Interrupt SENTIA with my voice (“Stop”)</string>
     <string name="wake_hello">Hello, I\'m SENTIA.</string>
     <string name="wake_here">I\'m here.</string>
+    <string name="wait_moment">One moment, I\'m looking.</string>
+    <string name="wake_listen">I\'m listening.</string>
+    <string name="orb_desc">SENTIA. Double-tap so SENTIA looks in front of you.</string>
 </resources>

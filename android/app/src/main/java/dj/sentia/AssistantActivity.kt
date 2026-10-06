@@ -154,6 +154,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         visible = true
         getSystemService(NotificationManager::class.java).cancel(Notifications.ID_WAKE)
         // Le profil ou les gestes ont pu changer dans les réglages.
+        applyOrbLayout()
         buildActions()
         refreshHints()
     }
@@ -184,14 +185,33 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         hintShake.text = "🫨 " + getString(R.string.hint_shake)
         hintVolume.text = "🔊 + 🔉 " + getString(R.string.hint_volume)
         val show = !keyboardOpen
-        hintShake.visibility = if (show && s.shakeEnabled) View.VISIBLE else View.GONE
-        hintVolume.visibility = if (show && s.volumeEnabled) View.VISIBLE else View.GONE
-        identSubtitle.visibility = if (show) View.VISIBLE else View.GONE
+        // Profil aveugle : l'écran d'accueil est la boule bleue seule (pas de boutons ni de rappels écrits).
+        val blind = s.profile == "blind"
+        hintShake.visibility = if (show && !blind && s.shakeEnabled) View.VISIBLE else View.GONE
+        hintVolume.visibility = if (show && !blind && s.volumeEnabled) View.VISIBLE else View.GONE
+        identSubtitle.visibility = if (show && !blind) View.VISIBLE else View.GONE
         orb.visibility = if (show) View.VISIBLE else View.GONE
-        actions.visibility = if (show) View.VISIBLE else View.GONE
+        actions.visibility = if (show && !blind) View.VISIBLE else View.GONE
         // Les personnes sourdes ont le champ d'écriture toujours sous les yeux.
         if (s.isDeafish) writePanel.visibility = View.VISIBLE
         else if (s.profile == "blind") writePanel.visibility = View.GONE // pas de clavier dans le parcours aveugle
+    }
+
+    /** Profil aveugle : la boule occupe l'écran, touchable (deux fois avec TalkBack) pour que SENTIA regarde. */
+    private fun applyOrbLayout() {
+        val blind = settings.profile == "blind"
+        orb.layoutParams = if (blind) LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 3f)
+        else LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(150))
+        if (blind) {
+            orb.contentDescription = getString(R.string.orb_desc)
+            orb.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            orb.setOnClickListener { onSeeButton() }
+        } else {
+            orb.contentDescription = null
+            orb.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            orb.setOnClickListener(null)
+            orb.isClickable = false
+        }
     }
 
     private fun bigButton(label: String, description: String, weight: Float, onClick: () -> Unit): Button {
@@ -279,17 +299,31 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private fun handleWake(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_WAKE, false) != true) return
         intent?.removeExtra(EXTRA_WAKE)
-        // La secousse veut dire : « Sentia, regarde devant moi et dis-moi ce que tu vois. »
+        val voice = !settings.isDeafish
+        orb.wake() // la boule bat plus vivement ~2 s (la vibration de réveil est déjà faite par WakeController)
+
+        // Nouvelle secousse pendant que SENTIA analyse ou parle : on arrête tout et SENTIA écoute la personne.
+        if (job?.isActive == true) {
+            if (orb.mode == OrbView.Mode.LISTENING) return // elle écoute déjà
+            val listenMsg = getString(R.string.wake_listen)
+            status.text = listenMsg
+            launchNew {
+                if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
+                conversation(greet = listenMsg, voice = voice)
+            }
+            return
+        }
+
+        // Première secousse : « Sentia, regarde devant moi et dis-moi ce que tu vois. »
         val inSession = engine.conversation.messages.length() > 0
         val hello = getString(if (inSession) R.string.wake_here else R.string.wake_hello)
-        status.text = hello
-        orb.wake() // la boule apparaît et bat plus vivement ~2 s (la vibration de réveil est déjà faite par WakeController)
-        val voice = !settings.isDeafish
+        val spokenIntro = hello + " " + getString(R.string.wait_moment)
+        status.text = spokenIntro
         launchNew {
             if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
-            // Le salut est dit pendant que la photo est prise et analysée : pas de silence d'attente.
+            // Le salut et « Attendez un instant » sont dits pendant que la photo est prise et analysée : pas de silence d'attente.
             if (voice || settings.voiceReplies) {
-                greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(hello, replyLang(hello)) }
+                greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(spokenIntro, replyLang(spokenIntro)) }
             }
             conversation(first = Lang.cameraPrompt(Lang.ui(settings.language)), voice = voice)
         }
@@ -325,6 +359,10 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         status.text = getString(R.string.see_hint)
         val voice = !settings.isDeafish
         if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
+        if (voice || settings.voiceReplies) {
+            val wait = getString(R.string.wait_moment)
+            greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(wait, replyLang(wait)) }
+        }
         conversation(first = Lang.cameraPrompt(Lang.ui(settings.language)), voice = voice)
     }
 

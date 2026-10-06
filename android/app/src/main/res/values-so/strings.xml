@@ -99,4 +99,7 @@
     <string name="set_barge">Ku hakiso SENTIA codkayga («Jooji»)</string>
     <string name="wake_hello">Salaan, waxaan ahay SENTIA.</string>
     <string name="wake_here">Waan joogaa.</string>
+    <string name="wait_moment">Ku sug daqiiqad, waan eegayaa.</string>
+    <string name="wake_listen">Waan ku dhegeysanayaa.</string>
+    <string name="orb_desc">SENTIA. Laba jeer taabo si SENTIA hortaada u eegto.</string>
 </resources>

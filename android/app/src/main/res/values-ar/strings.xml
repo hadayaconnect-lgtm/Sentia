@@ -99,4 +99,7 @@
     <string name="set_barge">مقاطعة SENTIA بصوتي («قف»)</string>
     <string name="wake_hello">مرحبا، أنا سنتيا.</string>
     <string name="wake_here">أنا هنا.</string>
+    <string name="wait_moment">انتظر لحظة، أنا أنظر.</string>
+    <string name="wake_listen">أنا أستمع إليك.</string>
+    <string name="orb_desc">سنتيا. المس مرتين لكي تنظر سنتيا أمامك.</string>
 </resources>

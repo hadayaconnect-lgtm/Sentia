@@ -99,4 +99,7 @@
     <string name="set_barge">Interrompre SENTIA avec la voix (« Stop »)</string>
     <string name="wake_hello">Bonjour, je suis SENTIA.</string>
     <string name="wake_here">Je suis là.</string>
+    <string name="wait_moment">Attendez un instant, je regarde.</string>
+    <string name="wake_listen">Je vous écoute.</string>
+    <string name="orb_desc">SENTIA. Touchez deux fois pour que SENTIA regarde devant vous.</string>
 </resources>
