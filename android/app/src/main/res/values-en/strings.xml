@@ -49,7 +49,6 @@
     <string name="set_accessibility">Turn on the volume keys service</string>
     <string name="set_test">Test the shake</string>
     <string name="set_code">Access code</string>
-    <string name="set_change_profile">Change mode (blind, deaf…)</string>
     <string name="set_save">Save</string>
     <string name="saved">Saved.</string>
     <string name="lang_auto">Automatic</string>
@@ -98,20 +97,4 @@
     <string name="sounds_off_msg">To understand the sounds around you, turn on “Detect sounds” in the settings. This feature is experimental.</string>
     <string name="cancel_button">Cancel</string>
     <string name="set_barge">Interrupt SENTIA with my voice (“Stop”)</string>
-    <string name="wake_hello">Hello, I\'m SENTIA.</string>
-    <string name="wake_here">I\'m here.</string>
-    <string name="wait_moment">I\'m looking.</string>
-    <string name="wake_listen">I\'m listening.</string>
-    <string name="orb_desc">SENTIA. Double-tap so SENTIA looks in front of you.</string>
-    <string name="image_unclear">I can\'t get a clear image. Please point the phone and try again.</string>
-    <string name="analysis_still">I\'m still looking, one moment.</string>
-    <string name="analysis_failed">I can\'t clearly identify what is in front of you. Try moving the phone slightly.</string>
-    <string name="set_overlay">Allow display over other apps</string>
-    <string name="set_app_perms">SENTIA permissions (HyperOS: pop-ups in background)</string>
-    <string name="set_live">Live conversation (Gemini Live)</string>
-    <string name="live_connecting">Connecting…</string>
-    <string name="live_reconnecting">One moment, I\'m reconnecting.</string>
-    <string name="live_lost">I lost the connection. Reopen SENTIA to start again.</string>
-    <string name="live_idle">I\'m going to sleep. Reopen SENTIA whenever you like.</string>
-    <string name="live_unavailable">Live conversation is not available. I\'m using classic mode.</string>
 </resources>
