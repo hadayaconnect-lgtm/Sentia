@@ -99,11 +99,19 @@
     <string name="set_barge">مقاطعة SENTIA بصوتي («قف»)</string>
     <string name="wake_hello">مرحبا، أنا سنتيا.</string>
     <string name="wake_here">أنا هنا.</string>
-    <string name="wait_moment">انتظر لحظة، أنا أنظر.</string>
+    <string name="wait_moment">أنا أنظر.</string>
     <string name="wake_listen">أنا أستمع إليك.</string>
     <string name="orb_desc">سنتيا. المس مرتين لكي تنظر سنتيا أمامك.</string>
+    <string name="image_unclear">لا أستطيع الحصول على صورة واضحة. وجّه الهاتف وحاول مرة أخرى.</string>
     <string name="analysis_still">ما زلت أنظر، لحظة من فضلك.</string>
     <string name="analysis_failed">لا أستطيع تحديد ما أمامك بوضوح. حاول تحريك الهاتف قليلا.</string>
     <string name="set_overlay">السماح بالعرض فوق التطبيقات الأخرى</string>
     <string name="set_app_perms">أذونات سنتيا (HyperOS: النوافذ في الخلفية)</string>
+    <string name="set_live">محادثة مباشرة (Gemini Live)</string>
+    <string name="live_connecting">جار الاتصال…</string>
+    <string name="live_reconnecting">لحظة، أعيد الاتصال.</string>
+    <string name="live_lost">انقطع الاتصال. أعد فتح سنتيا للبدء من جديد.</string>
+    <string name="live_idle">سأدخل في وضع السكون. أعد فتح سنتيا متى شئت.</string>
+    <string name="live_unavailable">المحادثة المباشرة غير متاحة. أستخدم الوضع العادي.</string>
+    <string name="set_change_profile">تغيير الوضع</string>
 </resources>

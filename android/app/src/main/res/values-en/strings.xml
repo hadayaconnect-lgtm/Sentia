@@ -100,11 +100,18 @@
     <string name="set_barge">Interrupt SENTIA with my voice (“Stop”)</string>
     <string name="wake_hello">Hello, I\'m SENTIA.</string>
     <string name="wake_here">I\'m here.</string>
-    <string name="wait_moment">One moment, I\'m looking.</string>
+    <string name="wait_moment">I\'m looking.</string>
     <string name="wake_listen">I\'m listening.</string>
     <string name="orb_desc">SENTIA. Double-tap so SENTIA looks in front of you.</string>
+    <string name="image_unclear">I can\'t get a clear image. Please point the phone and try again.</string>
     <string name="analysis_still">I\'m still looking, one moment.</string>
     <string name="analysis_failed">I can\'t clearly identify what is in front of you. Try moving the phone slightly.</string>
     <string name="set_overlay">Allow display over other apps</string>
     <string name="set_app_perms">SENTIA permissions (HyperOS: pop-ups in background)</string>
+    <string name="set_live">Live conversation (Gemini Live)</string>
+    <string name="live_connecting">Connecting…</string>
+    <string name="live_reconnecting">One moment, I\'m reconnecting.</string>
+    <string name="live_lost">I lost the connection. Reopen SENTIA to start again.</string>
+    <string name="live_idle">I\'m going to sleep. Reopen SENTIA whenever you like.</string>
+    <string name="live_unavailable">Live conversation is not available. I\'m using classic mode.</string>
 </resources>

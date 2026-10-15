@@ -33,6 +33,11 @@ class Settings(context: Context) {
         set(v) = p.edit().putBoolean("volume", v).apply()
 
     /** La voix fait partie du fonctionnement principal : seule une personne sourde seule ne l'entend pas. */
+    /** Conversation en direct (Gemini Live) : activée par défaut ; le mode classique reste le repli automatique. */
+    var liveMode: Boolean
+        get() = p.getBoolean("live_mode", true)
+        set(v) = p.edit().putBoolean("live_mode", v).apply()
+
     val voiceReplies: Boolean get() = profile != "deaf"
 
     /** « Stop » à la voix pendant que SENTIA parle : toujours actif (le micro filtre l'écho et ignore le début de chaque phrase). */

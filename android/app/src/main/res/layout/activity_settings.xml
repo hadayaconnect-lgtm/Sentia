@@ -16,6 +16,10 @@
             android:minHeight="56dp" android:inputType="textPassword" android:textColor="@color/white" android:textSize="20sp"
             android:importantForAutofill="no" />
 
+        <CheckBox android:id="@+id/cbLive" style="@style/Sentia.Text"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="56dp" android:layout_marginTop="16dp" android:text="@string/set_live" />
+
         <TextView android:id="@+id/diagStatus" style="@style/Sentia.Text"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="16dp" android:textSize="15sp" />

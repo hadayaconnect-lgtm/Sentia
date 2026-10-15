@@ -31,6 +31,15 @@ export const env = {
   },
   /** Modèle de secours si le modèle principal Gemini est surchargé (503) ou limité (429). Vide = pas de secours. */
   get geminiFallbackModel() { return optional("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash"); },
+  /** Mode conversation en direct (Gemini Live). Modèle et adresses WebSocket modifiables sans reconstruire l'application. */
+  get liveModel() { return optional("LIVE_MODEL", "gemini-3.8-live"); },
+  get liveApiKey() { return required("GEMINI_API_KEY"); },
+  get liveWsUrls(): string[] {
+    const custom = process.env.LIVE_WS_URL;
+    if (custom) return custom.split(",").map((u) => u.trim()).filter(Boolean);
+    const base = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.";
+    return [base + "BidiGenerateContentConstrained", base + "BidiGenerateContent"];
+  },
   get anthropicApiKey() { return required("ANTHROPIC_API_KEY"); },
   get claudeModel() { return optional("CLAUDE_MODEL", "claude-sonnet-5-5"); },
 

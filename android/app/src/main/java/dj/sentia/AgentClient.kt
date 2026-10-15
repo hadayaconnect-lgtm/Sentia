@@ -124,6 +124,23 @@ class AgentClient(context: Context) {
         }
     }
 
+    /** Jeton temporaire + consignes pour la conversation en direct (Gemini Live). La clé secrète reste sur le serveur. */
+    suspend fun liveToken(language: String, profile: String, localTime: String): LiveToken {
+        val body = JSONObject().put("language", language).put("profile", profile.ifEmpty { "other" }).put("localTime", localTime)
+            .toString().toRequestBody("application/json".toMediaType())
+        return execute(builder("/api/live-token").post(body).build(), 20_000) { r ->
+            val j = JSONObject(r.body!!.string())
+            val urls = j.getJSONArray("urls")
+            LiveToken(
+                token = j.getString("token"),
+                urls = (0 until urls.length()).map { urls.getString(it) },
+                model = j.getString("model"),
+                instruction = j.getString("instruction"),
+                toolsJson = j.getJSONArray("tools").toString(),
+            )
+        }
+    }
+
     /** Transcription : renvoie (texte, langue détectée ou ""). */
     suspend fun transcribe(audio: File): Pair<String, String> {
         val form = MultipartBody.Builder().setType(MultipartBody.FORM)
@@ -144,3 +161,6 @@ class AgentClient(context: Context) {
         }
     }
 }
+
+/** Ce que le serveur donne pour ouvrir une conversation en direct. */
+class LiveToken(val token: String, val urls: List<String>, val model: String, val instruction: String, val toolsJson: String)

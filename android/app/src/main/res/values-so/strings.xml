@@ -99,11 +99,19 @@
     <string name="set_barge">Ku hakiso SENTIA codkayga («Jooji»)</string>
     <string name="wake_hello">Salaan, waxaan ahay SENTIA.</string>
     <string name="wake_here">Waan joogaa.</string>
-    <string name="wait_moment">Ku sug daqiiqad, waan eegayaa.</string>
+    <string name="wait_moment">Waan eegayaa.</string>
     <string name="wake_listen">Waan ku dhegeysanayaa.</string>
     <string name="orb_desc">SENTIA. Laba jeer taabo si SENTIA hortaada u eegto.</string>
+    <string name="image_unclear">Ma heli karo sawir cad. Fadlan u jiheey taleefanka oo mar kale isku day.</string>
     <string name="analysis_still">Weli waan eegayaa, ku sug daqiiqad.</string>
     <string name="analysis_failed">Ma awoodo inaan si cad u aqoonsado waxa hortaada ah. Isku day inaad taleefanka wax yar dhaqaajiso.</string>
     <string name="set_overlay">Ogolow muuqaal ka sarreeya apps-ka kale</string>
     <string name="set_app_perms">Ogolaanshaha SENTIA (HyperOS: daaqado gadaal ah)</string>
+    <string name="set_live">Wada hadal toos ah (Gemini Live)</string>
+    <string name="live_connecting">Waa la xidhiidhayaa…</string>
+    <string name="live_reconnecting">Ku sug daqiiqad, mar kale ayaan xidhiidhayaa.</string>
+    <string name="live_lost">Xidhiidhkii ayaa go\'ay. Mar kale fur SENTIA.</string>
+    <string name="live_idle">Waan seexanayaa. Mar kale fur SENTIA markaad rabto.</string>
+    <string name="live_unavailable">Wada hadalka toosan lama heli karo. Waxaan isticmaalayaa habka caadiga ah.</string>
+    <string name="set_change_profile">Beddel qaabka</string>
 </resources>

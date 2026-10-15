@@ -100,11 +100,18 @@
     <string name="set_barge">Interrompre SENTIA avec la voix (« Stop »)</string>
     <string name="wake_hello">Bonjour, je suis SENTIA.</string>
     <string name="wake_here">Je suis là.</string>
-    <string name="wait_moment">Attendez un instant, je regarde.</string>
+    <string name="wait_moment">Je regarde.</string>
     <string name="wake_listen">Je vous écoute.</string>
     <string name="orb_desc">SENTIA. Touchez deux fois pour que SENTIA regarde devant vous.</string>
+    <string name="image_unclear">Je n\'arrive pas à obtenir une image claire. Veuillez orienter le téléphone et réessayer.</string>
     <string name="analysis_still">Je regarde encore, un instant.</string>
     <string name="analysis_failed">Je n\'arrive pas à identifier clairement ce qui se trouve devant vous. Essayez de déplacer légèrement le téléphone.</string>
     <string name="set_overlay">Autoriser l\'affichage par-dessus les autres applications</string>
     <string name="set_app_perms">Autorisations de SENTIA (HyperOS : fenêtres en arrière-plan)</string>
+    <string name="set_live">Conversation en direct (Gemini Live)</string>
+    <string name="live_connecting">Connexion en cours…</string>
+    <string name="live_reconnecting">Un instant, je me reconnecte.</string>
+    <string name="live_lost">J\'ai perdu la connexion. Rouvrez SENTIA pour recommencer.</string>
+    <string name="live_idle">Je me mets en veille. Rouvrez SENTIA quand vous voulez.</string>
+    <string name="live_unavailable">La conversation en direct n\'est pas disponible. J\'utilise le mode classique.</string>
 </resources>

@@ -11,6 +11,7 @@ import android.os.PowerManager
 import android.provider.Settings as AndroidSettings
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
@@ -46,6 +47,7 @@ class SettingsActivity : AppCompatActivity() {
         val s = settings
         spLanguage.setSelection(languages.indexOf(s.language).coerceAtLeast(0))
         etCode.setText(s.accessCode)
+        findViewById<CheckBox>(R.id.cbLive).isChecked = s.liveMode
 
         findViewById<Button>(R.id.btnBattery).setOnClickListener { openBatterySettings() }
         findViewById<Button>(R.id.btnOverlay).setOnClickListener {
@@ -139,6 +141,7 @@ class SettingsActivity : AppCompatActivity() {
         val oldLang = s.language
         s.language = languages[spLanguage.selectedItemPosition]
         s.accessCode = etCode.text.toString().trim()
+        s.liveMode = findViewById<CheckBox>(R.id.cbLive).isChecked
         Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
         if (oldLang != s.language) SentiaApp.applyUiLanguage(s.language)
         finish()
