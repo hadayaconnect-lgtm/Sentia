@@ -64,6 +64,8 @@ class ToolExecutor(private val host: ToolHost, private val settings: Settings) {
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e // le délai d'analyse (withTimeoutOrNull) ne doit pas être avalé
+        } catch (e: AgentException) {
+            throw e // « image invalide » (2 captures échouées) : dit à la personne, jamais transmis à l'IA comme un résultat
         } catch (e: Exception) {
             ToolOutput.text("Erreur : " + (e.message ?: e.javaClass.simpleName), true)
         }
@@ -72,7 +74,7 @@ class ToolExecutor(private val host: ToolHost, private val settings: Settings) {
     /** Permission caméra (demandée avant de lancer le chronomètre d'analyse : la boîte de dialogue ne compte pas). */
     suspend fun ensureCamera(): Boolean = host.ensurePermission(Manifest.permission.CAMERA)
 
-    /** Prend UNE photo (JPEG base64). Annulable. */
+    /** Prend UNE photo vérifiée (JPEG base64), caméra libérée après. Annulable. [AgentException.Kind.IMAGE] si elle reste inutilisable. */
     suspend fun takePhoto(): String = CameraCapture.capture(host.context, host.lifecycleOwner, highRes = true)
 
     private suspend fun capture(purpose: String): ToolOutput {
@@ -81,7 +83,7 @@ class ToolExecutor(private val host: ToolHost, private val settings: Settings) {
         val b64 = CameraCapture.capture(c, host.lifecycleOwner, highRes = purpose != "color") // texte, billets et scènes : définition plus haute pour bien lire
         val content = JSONArray()
             .put(Conversation.image(b64))
-            .put(Conversation.text("Photo prise (but : $purpose). Cadrage non vérifié : si l'image est floue, coupée ou vide, dis-le et explique comment tenir le téléphone."))
+            .put(Conversation.text("Photo prise (but : $purpose). Cadrage non vérifié : si l'image est floue ou coupée, ou si l'objet demandé n'est pas clairement visible, dis-le et explique comment tenir le téléphone. Ne prends pas d'autre photo."))
         return ToolOutput(content)
     }
 
