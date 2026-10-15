@@ -2,7 +2,6 @@ package dj.sentia
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.media.audiofx.AcousticEchoCanceler
 import dj.sentia.core.ShakeDetector
 import java.util.UUID
 
@@ -22,33 +21,53 @@ class Settings(context: Context) {
 
     /** 0 faible, 1 moyenne, 2 forte. */
     var sensitivity: Int
-        get() = p.getInt("sensitivity", 1)
-        set(v) = p.edit().putInt("sensitivity", v).apply()
+        get() = p.getInt("sens_v2", 2) // « Élevée » par défaut : une personne aveugle ne doit pas avoir à secouer très fort
+        set(v) = p.edit().putInt("sens_v2", v).apply()
 
     var shakeEnabled: Boolean
-        get() = p.getBoolean("shake", true)
-        set(v) = p.edit().putBoolean("shake", v).apply()
+        get() = p.getBoolean("shake2", false) // remplacée par les 3 appuis sur Volume + (réglage optionnel)
+        set(v) = p.edit().putBoolean("shake2", v).apply()
 
     var volumeEnabled: Boolean
         get() = p.getBoolean("volume", true)
         set(v) = p.edit().putBoolean("volume", v).apply()
 
-    /** Par défaut : réponses parlées sauf pour les personnes sourdes. */
-    var voiceReplies: Boolean
-        get() = if (p.contains("voice")) p.getBoolean("voice", true) else profile != "deaf"
-        set(v) = p.edit().putBoolean("voice", v).apply()
+    /** La voix fait partie du fonctionnement principal : seule une personne sourde seule ne l'entend pas. */
+    /** Conversation en direct (Gemini Live) : activée par défaut ; le mode classique reste le repli automatique. */
+    var liveMode: Boolean
+        get() = p.getBoolean("live_mode", true)
+        set(v) = p.edit().putBoolean("live_mode", v).apply()
 
-    /**
-     * Interrompre SENTIA en parlant (« Stop »). Par défaut seulement si le téléphone sait annuler l'écho du haut-parleur,
-     * sinon SENTIA risquerait de s'interrompre avec sa propre voix. Le bouton Stop reste toujours disponible.
-     */
-    var bargeIn: Boolean
-        get() = if (p.contains("barge")) p.getBoolean("barge", false) else AcousticEchoCanceler.isAvailable()
-        set(v) = p.edit().putBoolean("barge", v).apply()
+    val voiceReplies: Boolean get() = profile != "deaf"
 
-    var soundsEnabled: Boolean
-        get() = p.getBoolean("sounds", false)
-        set(v) = p.edit().putBoolean("sounds", v).apply()
+    /** « Stop » à la voix pendant que SENTIA parle : toujours actif (le micro filtre l'écho et ignore le début de chaque phrase). */
+    val bargeIn: Boolean get() = true
+
+    // Diagnostic de la veille (affiché dans les Réglages) : jamais envoyé nulle part.
+    var diagServiceAt: Long
+        get() = p.getLong("d_service", 0L)
+        set(v) = p.edit().putLong("d_service", v).apply()
+    var diagShakeAt: Long
+        get() = p.getLong("d_shake", 0L)
+        set(v) = p.edit().putLong("d_shake", v).apply()
+    var diagWake: String
+        get() = p.getString("d_wake", "") ?: ""
+        set(v) = p.edit().putString("d_wake", v).apply()
+    var diagPeak: Float
+        get() = p.getFloat("d_peak", 0f)
+        set(v) = p.edit().putFloat("d_peak", v).apply()
+    var diagSamplesAt: Long
+        get() = p.getLong("d_samples", 0L)
+        set(v) = p.edit().putLong("d_samples", v).apply()
+    var diagPerf: String
+        get() = p.getString("d_perf", "") ?: ""
+        set(v) = p.edit().putString("d_perf", v).apply()
+    var diagServiceError: String
+        get() = p.getString("d_err", "") ?: ""
+        set(v) = p.edit().putString("d_err", v).apply()
+
+    /** Détection des sons : expérimentale (modèle non fourni avec l'application), donc désactivée tant qu'elle n'est pas fiable. */
+    val soundsEnabled: Boolean get() = false
 
     var accessCode: String
         get() = p.getString("code", "") ?: ""

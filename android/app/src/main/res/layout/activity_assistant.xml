@@ -79,14 +79,17 @@
         android:orientation="horizontal" android:layout_marginTop="8dp">
         <Button android:id="@+id/repeatBtn" style="@style/Sentia.BigButton"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-            android:text="@string/repeat_button" android:textSize="17sp" />
+            android:text="@string/repeat_button" android:textSize="15sp" android:minHeight="56dp" android:padding="6dp"
+            android:gravity="center" android:maxLines="2" />
         <Button android:id="@+id/stopBtn" style="@style/Sentia.BigButton"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:text="@string/stop_button" android:textSize="17sp" />
+            android:text="@string/stop_button" android:textSize="15sp" android:minHeight="56dp" android:padding="6dp"
+            android:gravity="center" android:maxLines="2" />
         <Button android:id="@+id/settingsBtn" style="@style/Sentia.BigButton"
             android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:text="@string/settings_button" android:textSize="17sp" />
+            android:text="@string/settings_button" android:textSize="15sp" android:minHeight="56dp" android:padding="6dp"
+            android:gravity="center" android:maxLines="2" />
     </LinearLayout>
 </LinearLayout>

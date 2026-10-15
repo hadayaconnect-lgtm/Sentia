@@ -148,6 +148,15 @@ fun main() {
     val (hw2, _) = run(ShakeDetector.Config.MEDIUM, 4.0, walking = true, signal = shake(4.5, 35f, 1.4))
     check("en marchant : secousse faible ignorée, secousse forte détectée", hw1 == 0 && hw2 == 1, "faible=$hw1 forte=$hw2")
 
+    println("\n== Trois appuis sur Volume +")
+    val t3 = VolumeTriple()
+    check("2 appuis : rien", !t3.onUpPress(0) && !t3.onUpPress(400))
+    check("3e appui rapide : déclenché", t3.onUpPress(800))
+    val t4 = VolumeTriple()
+    t4.onUpPress(0); t4.onUpPress(900)
+    check("3 appuis trop espacés : rien", !t4.onUpPress(2100))
+    check("puis 3 rapides : déclenché", !t4.onUpPress(4000) && !t4.onUpPress(4200) && t4.onUpPress(4400))
+
     println("\n== Geste volume (deux touches maintenues)")
     val v = VolumeGesture(1000)
     check("première touche : transmise au système", !v.onKey(VolumeGesture.Key.UP, true, 0))
@@ -188,6 +197,8 @@ fun main() {
     check("regarde encore / lis ça / décris la scène / ferme la caméra",
         cmd("Regarde encore") == VoiceCommand.LOOK_AGAIN && cmd("Lis ça") == VoiceCommand.READ_TEXT &&
         cmd("Décris la scène") == VoiceCommand.DESCRIBE_SCENE && cmd("Ferme la caméra.") == VoiceCommand.CLOSE_CAMERA)
+    check("billet / lis le panneau / regarde devant moi", cmd("Quel est ce billet ?") == VoiceCommand.BANKNOTE && cmd("Lis le panneau.") == VoiceCommand.READ_TEXT &&
+        cmd("Regarde devant moi") == VoiceCommand.LOOK_AGAIN && cmd("Lis le document") == VoiceCommand.READ_TEXT)
     check("anglais", cmd("Stop") == VoiceCommand.STOP && cmd("Go on") == VoiceCommand.CONTINUE && cmd("Look again") == VoiceCommand.LOOK_AGAIN && cmd("Close the camera") == VoiceCommand.CLOSE_CAMERA)
     check("arabe (avec voyelles et variantes d'écriture)", cmd("قِف") == VoiceCommand.STOP && cmd("تابع") == VoiceCommand.CONTINUE && cmd("أغلق الكاميرا") == VoiceCommand.CLOSE_CAMERA && cmd("انظر مرة أخرى") == VoiceCommand.LOOK_AGAIN)
     check("somali", cmd("Jooji") == VoiceCommand.STOP && cmd("Sii wad") == VoiceCommand.CONTINUE)
@@ -196,6 +207,104 @@ fun main() {
     check("réponse « oui / d'accord » à « réessayer ? »", VoiceCommands.isRetry("Oui.") && VoiceCommands.isRetry("D'accord") && !VoiceCommands.isRetry("Quelle heure est-il ?"))
     check("transcription vide ou inventée à partir du silence", VoiceCommands.isNoise("") && VoiceCommands.isNoise("  .  ") &&
         VoiceCommands.isNoise("Sous-titrage ST' 501") && VoiceCommands.isNoise("Thanks for watching!") && !VoiceCommands.isNoise("Bonjour"))
+
+    println("\n== Pipeline photo unique")
+    class Cam { var shots = 0; var released = 0 }
+    fun flow(cam: Cam, seq: List<Shot?>, boom: Int = -1): Shot? = captureValid(
+        shoot = { a -> cam.shots++; if (a == boom) throw IllegalStateException("capture"); seq.getOrNull(a - 1) },
+        usable = { PhotoCheck.isUsable(it) },
+        release = { cam.released++ },
+    )
+    val good = Shot("QUJD", 90, 200_000)
+    val black = Shot("QUJD", 2, 30_000)
+    val c1 = Cam(); val r1 = flow(c1, listOf(good))
+    check("photo valide : UNE seule capture, envoyée", r1 === good && c1.shots == 1)
+    check("caméra libérée après la capture (succès)", c1.released == 1)
+    val c2 = Cam(); val r2 = flow(c2, listOf(black, good))
+    check("photo noire : une nouvelle capture, la bonne est gardée", r2 === good && c2.shots == 2 && c2.released == 1)
+    val c3 = Cam(); val r3 = flow(c3, listOf(black, black, good))
+    check("2 photos invalides : STOP (2 captures max), RIEN d'envoyé", r3 == null && c3.shots == 2 && c3.released == 1)
+    val c4 = Cam(); val r4 = flow(c4, listOf(null, good), boom = 1)
+    check("échec de capture : compte comme invalide, une reprise", r4 === good && c4.shots == 2)
+    val c5 = Cam(); val r5 = try { captureValid<Shot>(shoot = { throw kotlin.coroutines.cancellation.CancellationException("x") }, usable = { true }, release = { c5.released++ }) } catch (e: kotlin.coroutines.cancellation.CancellationException) { null }
+    check("annulation / délai : jamais avalée, caméra quand même libérée", r5 == null && c5.released == 1)
+    check("image vide ou minuscule : invalide", !PhotoCheck.isUsable(Shot("", 90, 0)) && !PhotoCheck.isUsable(Shot("QQ", 90, 300)) && !PhotoCheck.isUsable(black) && PhotoCheck.isUsable(good))
+    check("mur blanc uniforme (lumineux) : valide, l'IA dira qu'il n'y a rien", PhotoCheck.isUsable(Shot("QUJD", 230, 15_000)))
+    val b = PhotoBudget()
+    check("une seule photo par demande (budget)", b.tryTake() && !b.tryTake() && !b.tryTake() && b.count == 1)
+    check("taille : 1,2 Mo max, 1600 px (billet / petit texte lisibles)", AnalysisPolicy.MAX_BYTES <= 1_300_000 && AnalysisPolicy.MAX_SIDE >= 1280)
+
+    println("\n== Nouvelle photo ou photo précédente ?")
+    fun fresh(t: String) = FreshPhoto.needed(t)
+    check("sécurité : nouvelle photo", listOf("Est-ce que je peux avancer ?", "C'est libre devant ?", "Y a-t-il un obstacle ?", "Est-ce dangereux ?",
+        "Je peux traverser ?", "Is it safe?", "Can I walk?", "Is there an obstacle?").all { fresh(it) })
+    check("suivi sur l'élément déjà analysé : photo précédente conservée", listOf("Qu'est-ce que c'est ?", "Et la personne à droite ?",
+        "De quelle couleur est la bouteille ?", "Lis le texte du panneau").none { fresh(it) })
+
+    println("\n== Délais")
+    check("plus de délai global de 10 s", AnalysisPolicy.CAPTURE_MAX_MS != 10_000L && AnalysisPolicy.AI_MAX_MS != 10_000L && AnalysisPolicy.REASSURE_AT_MS != 10_000L)
+    check("la phrase de patience n'arrête rien (avant le maximum IA)", AnalysisPolicy.REASSURE_AT_MS < AnalysisPolicy.AI_MAX_MS)
+    check("réseau : une seule reprise, jamais sur un délai", RetryPolicy.shouldRetryNetwork(true, false, null) && RetryPolicy.shouldRetryNetwork(true, false, 20_000) &&
+        !RetryPolicy.shouldRetryNetwork(true, true, null) && !RetryPolicy.shouldRetryNetwork(false, false, null) && !RetryPolicy.shouldRetryNetwork(true, false, 3_000))
+
+    println("\n== Chronomètre par étape")
+    var clock = 1_000L
+    val st = StageTimes { clock }
+    st.begin(); clock += 300; st.mark("screen")
+    st.put("cam_open", 650); st.put("shot", 400); st.retake(); st.put("validate", 20); st.put("compress", 180); st.photoSize(350_000)
+    st.put("upload", 900); st.put("wait", 4_200); st.put("server", 3_800); st.put("download", 100)
+    clock += 6_000; st.mark("ai_done"); clock += 250
+    val rep = st.ttsStarted()
+    check("rapport complet, chaque étape", rep != null && listOf("Réveil → écran : 0,3 s", "Caméra prête : 0,7 s", "Prise de la photo : 0,4 s (+1 nouvelle capture)", "Validation de l'image : 0,0 s",
+        "Compression (341 Ko) : 0,2 s", "Envoi au serveur : 0,9 s", "Attente serveur + IA : 4,2 s (dont agent 3,8 s)", "Réception : 0,1 s", "Voix (délai avant le 1er son) : 0,3 s", "TOTAL : 6,6 s").all { rep!!.contains(it) }, rep ?: "null")
+    check("rapport écrit une seule fois par analyse", st.ttsStarted() == null)
+    val st2 = StageTimes { clock }; st2.begin()
+    check("pas de rapport tant que l'IA n'a pas répondu (le salut ne compte pas)", st2.ttsStarted() == null)
+
+    println("\n== Conversation en direct (protocole)")
+    val rawSetup = LiveProtocol.setup("models/gemini-3.8-live", "Tu es \"SENTIA\".\nBref.", "[{\"functionDeclarations\":[]}]")
+    val sm = MiniJson.parseObject(rawSetup)
+    val su = sm?.get("setup") as? Map<*, *>
+    check("setup : JSON valide, modèle, audio, transcriptions, reprise", su != null && su["model"] == "models/gemini-3.8-live" &&
+        ((su["generationConfig"] as Map<*, *>)["responseModalities"] as List<*>) == listOf("AUDIO") &&
+        su["inputAudioTranscription"] is Map<*, *> && su["outputAudioTranscription"] is Map<*, *> && su["sessionResumption"] is Map<*, *>)
+    check("setup : consignes avec guillemets et retour à la ligne conservées", (((su!!["systemInstruction"] as Map<*, *>)["parts"] as List<*>)[0] as Map<*, *>)["text"] == "Tu es \"SENTIA\".\nBref.")
+    check("setup : reprise avec identifiant", ((MiniJson.parseObject(LiveProtocol.setup("m", "i", "[]", "H1"))!!["setup"] as Map<*, *>)["sessionResumption"] as Map<*, *>)["handle"] == "H1")
+    val au = MiniJson.parseObject(LiveProtocol.audio("QUJD"))!!["realtimeInput"] as Map<*, *>
+    check("audio du micro : PCM 16 kHz", (au["audio"] as Map<*, *>)["mimeType"] == "audio/pcm;rate=16000" && (au["audio"] as Map<*, *>)["data"] == "QUJD")
+    check("photo : UNE image JPEG", ((MiniJson.parseObject(LiveProtocol.photo("QQ=="))!!["realtimeInput"] as Map<*, *>)["video"] as Map<*, *>)["mimeType"] == "image/jpeg")
+    val tr = MiniJson.parseObject(LiveProtocol.toolResponse("c1", "capture_camera", "ok \"photo\""))!!["toolResponse"] as Map<*, *>
+    check("réponse d'outil : identifiant et nom repris", (((tr["functionResponses"] as List<*>)[0]) as Map<*, *>).let { it["id"] == "c1" && it["name"] == "capture_camera" && (it["response"] as Map<*, *>)["result"] == "ok \"photo\"" })
+    check("réponse d'outil en erreur", (((MiniJson.parseObject(LiveProtocol.toolResponse("c1", "x", "non", true))!!["toolResponse"] as Map<*, *>)["functionResponses"] as List<*>)[0] as Map<*, *>).let { (it["response"] as Map<*, *>).containsKey("error") })
+    check("fin de flux audio / texte", LiveProtocol.audioStreamEnd().contains("audioStreamEnd") && MiniJson.parseObject(LiveProtocol.text("Bonjour \"toi\""))!!.containsKey("realtimeInput"))
+
+    val evs = LiveProtocol.parse("{\"serverContent\":{\"modelTurn\":{\"parts\":[{\"inlineData\":{\"mimeType\":\"audio/pcm;rate=24000\",\"data\":\"AAA=\"}}]},\"outputTranscription\":{\"text\":\"Bonjour\"},\"turnComplete\":true}}")
+    check("serveur : audio + texte + fin de tour dans un même message", evs.size == 3 && evs[0] is LiveEvent.Audio && (evs[0] as LiveEvent.Audio).b64 == "AAA=" && evs[1] is LiveEvent.OutputText && evs[2] is LiveEvent.TurnComplete)
+    check("serveur : setupComplete", LiveProtocol.parse("{\"setupComplete\":{}}").single() is LiveEvent.SetupComplete)
+    check("serveur : interruption (vider la lecture)", LiveProtocol.parse("{\"serverContent\":{\"interrupted\":true}}").single() is LiveEvent.Interrupted)
+    check("serveur : ce que dit la personne", (LiveProtocol.parse("{\"serverContent\":{\"inputTranscription\":{\"text\":\"Stop\",\"languageCode\":\"fr\"}}}").single() as LiveEvent.InputText).text == "Stop")
+    val tc = LiveProtocol.parse("{\"toolCall\":{\"functionCalls\":[{\"id\":\"call_1\",\"name\":\"capture_camera\",\"args\":{\"purpose\":\"money\"}}]}}").single() as LiveEvent.ToolCall
+    check("serveur : demande de photo avec son objectif", tc.calls.single().let { it.id == "call_1" && it.name == "capture_camera" && it.args["purpose"] == "money" })
+    check("serveur : annulation d'un appel d'outil", (LiveProtocol.parse("{\"toolCallCancellation\":{\"ids\":[\"a\",\"b\"]}}").single() as LiveEvent.ToolCancel).ids == listOf("a", "b"))
+    check("serveur : goAway et reprise", (LiveProtocol.parse("{\"goAway\":{\"timeLeft\":\"30s\"}}").single() as LiveEvent.GoAway).timeLeftMs == 30_000L &&
+        (LiveProtocol.parse("{\"sessionResumptionUpdate\":{\"newHandle\":\"H2\",\"resumable\":true}}").single() as LiveEvent.Resumption).handle == "H2")
+    check("serveur : message illisible = échec propre, jamais de plantage", LiveProtocol.parse("pas du json").single() is LiveEvent.Failure && LiveProtocol.parse("[1,2]").single() is LiveEvent.Failure)
+    check("serveur : message inconnu ignoré", LiveProtocol.parse("{\"autre\":1}").isEmpty())
+    check("JSON : unicode, échappements, imbrications", (MiniJson.parse("{\"a\":[1,{\"b\":\"\\u00e9\\n\"}],\"c\":null,\"d\":true}") as Map<*, *>).let { ((it["a"] as List<*>)[1] as Map<*, *>)["b"] == "é\n" && it["c"] == null && it["d"] == true })
+
+    println("\n== Conversation en direct (règles)")
+    val gate = LivePhotoGate()
+    check("une seule photo par demande, de nouveau possible au tour suivant", gate.tryTake() && !gate.tryTake() && !gate.tryTake().also { gate.turnEnded() } && gate.tryTake())
+    val spoken = SpokenText()
+    check("« Stop » reconnu même dit en plusieurs morceaux", spoken.add("Sto").let { VoiceCommands.parse(it) } == null && VoiceCommands.parse(spoken.add("p")) == VoiceCommand.STOP)
+    spoken.reset()
+    check("phrase normale : pas une commande", VoiceCommands.parse(spoken.add("Qu'est-ce qu'il y a sur la table ?")) == null)
+    val idle = IdleWatch(180_000)
+    idle.activity(1_000)
+    check("veille après un long silence seulement", !idle.expired(100_000) && idle.expired(200_000) && !IdleWatch(1000).expired(999_999))
+    check("fin de conversation demandée à voix haute (pas « Stop »)", listOf("Au revoir", "Au revoir Sentia.", "À bientôt !", "Termine la conversation", "Goodbye").all { LiveEnd.isGoodbye(it) } &&
+        !LiveEnd.isGoodbye("Stop") && !LiveEnd.isGoodbye("Dis au revoir à mon ami en arabe") && !LiveEnd.isGoodbye("Quelle heure est-il ?"))
+    check("reconnexion : 3 essais au plus, attente croissante", LiveReconnect.canRetry(3) && !LiveReconnect.canRetry(4) && LiveReconnect.delayMs(1) == 500L && LiveReconnect.delayMs(3) == 2000L)
 
     println(if (failures == 0) "\nTout est vert." else "\n$failures échec(s).")
     if (failures > 0) System.exit(1)

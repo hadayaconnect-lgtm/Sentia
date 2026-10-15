@@ -10,6 +10,8 @@ import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityManager
@@ -22,9 +24,12 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.widget.TextViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import dj.sentia.core.AnalysisPolicy
+import dj.sentia.core.FreshPhoto
 import dj.sentia.core.HapticPattern
 import dj.sentia.core.VoiceCommand
 import dj.sentia.core.VoiceCommands
@@ -37,6 +42,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import kotlin.coroutines.resume
 
@@ -69,6 +75,16 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private var pendingPermission: CompletableDeferred<Boolean>? = null
     private var builtForProfile: String? = null
     private var keyboardOpen = false
+    /** Les personnes aveugles / malvoyantes entendent toujours les réponses, quel que soit le réglage « réponses vocales ». */
+    private val voiceOn: Boolean get() = settings.voiceReplies || settings.isBlindish
+
+    private var greetJob: Job? = null // salut en cours de lecture pendant l'analyse de la première photo
+
+    /** Conversation en direct (Gemini Live) en cours, sinon null. */
+    private var live: LiveSession? = null
+    private fun liveActive(): Boolean = live?.active == true
+    /** Le mode direct convient aux personnes qui entendent (la conversation est vocale) ; sinon, mode classique. */
+    private fun liveWanted(): Boolean = settings.liveMode && !settings.isDeafish
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         pendingPermission?.complete(granted)
@@ -109,9 +125,18 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         title.text = "🧠 SENTIA"
         title.contentDescription = "SENTIA"
 
-        findViewById<Button>(R.id.repeatBtn).setOnClickListener { onRepeatButton() }
-        findViewById<Button>(R.id.stopBtn).setOnClickListener { onStopButton() }
-        findViewById<Button>(R.id.settingsBtn).setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
+        val repeatBtn = findViewById<Button>(R.id.repeatBtn)
+        val stopBtn = findViewById<Button>(R.id.stopBtn)
+        val settingsBtn = findViewById<Button>(R.id.settingsBtn)
+        for ((b, icon) in listOf(repeatBtn to "🔁", stopBtn to "⏹", settingsBtn to "⚙️")) {
+            val label = b.text.toString()
+            b.contentDescription = label
+            b.text = "$icon\n$label" // icône au-dessus du texte : rien n'est coupé, même sur un petit écran
+            fitText(b, 11, 16)
+        }
+        repeatBtn.setOnClickListener { onRepeatButton() }
+        stopBtn.setOnClickListener { onStopButton() }
+        settingsBtn.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         findViewById<Button>(R.id.sendBtn).setOnClickListener {
             val t = input.text.toString().trim()
             if (t.isNotEmpty()) { input.setText(""); onTyped(t) }
@@ -126,12 +151,22 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
 
         status.text = getString(R.string.ready)
         ensureBackgroundServices()
+        if (savedInstanceState == null) markLauncherOpenAsWake(intent)
         handleWake(intent)
+    }
+
+    /** Profil aveugle : ouvrir l'application depuis l'icône = réveil (SENTIA regarde et décrit tout de suite). */
+    private fun markLauncherOpenAsWake(i: Intent?) {
+        if (i == null || !settings.isBlindish) return
+        if (i.action == Intent.ACTION_MAIN && i.hasCategory(Intent.CATEGORY_LAUNCHER) && !i.hasExtra(EXTRA_SOURCE)) {
+            i.putExtra(EXTRA_WAKE, true).putExtra(EXTRA_SOURCE, "open")
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        markLauncherOpenAsWake(intent)
         if (::speaker.isInitialized && !settings.needsOnboarding) handleWake(intent)
     }
 
@@ -140,7 +175,10 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         if (!::speech.isInitialized) return
         visible = true
         getSystemService(NotificationManager::class.java).cancel(Notifications.ID_WAKE)
+        // La veille de la secousse peut avoir été arrêtée par le téléphone : on la relance à chaque ouverture.
+        try { ShakeService.start(this) } catch (_: Exception) {}
         // Le profil ou les gestes ont pu changer dans les réglages.
+        applyOrbLayout()
         buildActions()
         refreshHints()
     }
@@ -171,13 +209,33 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         hintShake.text = "🫨 " + getString(R.string.hint_shake)
         hintVolume.text = "🔊 + 🔉 " + getString(R.string.hint_volume)
         val show = !keyboardOpen
-        hintShake.visibility = if (show && s.shakeEnabled) View.VISIBLE else View.GONE
-        hintVolume.visibility = if (show && s.volumeEnabled) View.VISIBLE else View.GONE
-        identSubtitle.visibility = if (show) View.VISIBLE else View.GONE
+        // Profil aveugle : l'écran d'accueil est la boule bleue seule (pas de boutons ni de rappels écrits).
+        val blind = s.profile == "blind"
+        hintShake.visibility = if (show && !blind && s.shakeEnabled) View.VISIBLE else View.GONE
+        hintVolume.visibility = if (show && !blind && s.volumeEnabled) View.VISIBLE else View.GONE
+        identSubtitle.visibility = if (show && !blind) View.VISIBLE else View.GONE
         orb.visibility = if (show) View.VISIBLE else View.GONE
-        actions.visibility = if (show) View.VISIBLE else View.GONE
+        actions.visibility = if (show && !blind) View.VISIBLE else View.GONE
         // Les personnes sourdes ont le champ d'écriture toujours sous les yeux.
         if (s.isDeafish) writePanel.visibility = View.VISIBLE
+        else if (s.profile == "blind") writePanel.visibility = View.GONE // pas de clavier dans le parcours aveugle
+    }
+
+    /** Profil aveugle : la boule occupe l'écran, touchable (deux fois avec TalkBack) pour que SENTIA regarde. */
+    private fun applyOrbLayout() {
+        val blind = settings.profile == "blind"
+        orb.layoutParams = if (blind) LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 3f)
+        else LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(150))
+        if (blind) {
+            orb.contentDescription = getString(R.string.orb_desc)
+            orb.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            orb.setOnClickListener { onSeeButton() }
+        } else {
+            orb.contentDescription = null
+            orb.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            orb.setOnClickListener(null)
+            orb.isClickable = false
+        }
     }
 
     private fun bigButton(label: String, description: String, weight: Float, onClick: () -> Unit): Button {
@@ -196,10 +254,17 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         for ((i, b) in listOf(first, second).withIndex()) {
             (b.parent as? LinearLayout)?.removeView(b)
             b.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply { if (i == 1) marginStart = dp(8) }
-            b.textSize = 18f
+            fitText(b, 12, 18)
             row.addView(b)
         }
         return row
+    }
+
+    /** Le texte se réduit tout seul pour tenir dans le bouton (jamais coupé), sans devenir illisible. */
+    private fun fitText(b: Button, minSp: Int, maxSp: Int) {
+        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(b, minSp, maxSp, 1, TypedValue.COMPLEX_UNIT_SP)
+        b.gravity = Gravity.CENTER
+        b.setPadding(dp(6), dp(6), dp(6), dp(6))
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
@@ -210,13 +275,16 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
      */
     private fun buildActions() {
         val profile = settings.profile
-        if (builtForProfile == profile && actions.childCount > 0) return
-        builtForProfile = profile
+        val key = profile
+        if (builtForProfile == key && actions.childCount > 0) return
+        builtForProfile = key
         actions.removeAllViews()
 
         val speak = bigButton("🗣️ " + getString(R.string.btn_speak), getString(R.string.btn_speak), 2f) { onSpeakButton() }
         val write = bigButton("✍️ " + getString(R.string.btn_write), getString(R.string.btn_write), 2f) { toggleWrite() }
-        val sounds = bigButton("🔊 " + getString(R.string.btn_sounds), getString(R.string.btn_sounds), 1f) { onSoundsButton() }
+        fun alone(b: android.widget.Button) = b.apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f).apply { topMargin = dp(8) }
+        }
         val seeLabel = SpannableString("📷 " + getString(R.string.btn_see) + "\n" + getString(R.string.see_hint)).also {
             val start = it.indexOf('\n') + 1
             it.setSpan(RelativeSizeSpan(0.65f), start, it.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
@@ -226,23 +294,24 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
 
         when (profile) {
             "blind" -> {
-                actions.addView(speak); actions.addView(see)
-                actions.addView(rowOf(write, sounds, 1f))
+                // Écran minimal : deux grands boutons, ni clavier ni champ d'écriture. L'action principale est la secousse.
+                (see.layoutParams as LinearLayout.LayoutParams).weight = 3f
+                actions.addView(see); actions.addView(speak)
             }
             "deaf" -> {
                 write.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 2f).apply { topMargin = dp(8) }
                 (see.layoutParams as LinearLayout.LayoutParams).weight = 1.5f
                 actions.addView(write); actions.addView(see)
-                actions.addView(rowOf(speak, sounds, 1f))
+                actions.addView(alone(speak))
             }
             "both" -> {
                 actions.addView(write); actions.addView(see)
-                actions.addView(rowOf(speak, sounds, 1f))
+                actions.addView(alone(speak))
             }
             else -> {
                 (see.layoutParams as LinearLayout.LayoutParams).weight = 1.5f
                 actions.addView(speak); actions.addView(see)
-                actions.addView(rowOf(write, sounds, 1f))
+                actions.addView(alone(write))
             }
         }
     }
@@ -252,15 +321,43 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private fun handleWake(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_WAKE, false) != true) return
         intent?.removeExtra(EXTRA_WAKE)
-        // Déjà dans une session : « Je suis là. » Sinon, présentation complète.
+        Perf.beginIfStale(); Perf.mark("screen")
+        val voice = !settings.isDeafish
+        orb.wake() // la boule bat plus vivement ~2 s (la vibration de réveil est déjà faite par WakeController)
+
+        // Conversation en direct déjà ouverte : un nouveau réveil coupe simplement la parole de SENTIA, qui écoute déjà.
+        if (liveActive()) { live?.interruptSpeech(); return }
+        // Réveil / ouverture de l'application en mode direct : connexion, puis SENTIA regarde (UNE photo) et décrit.
+        if (liveWanted()) {
+            status.text = getString(R.string.live_connecting)
+            launchNew { startLive(autoLook = true) }
+            return
+        }
+
+        // Nouvelle secousse pendant que SENTIA analyse ou parle : on arrête tout et SENTIA écoute la personne.
+        if (job?.isActive == true) {
+            if (orb.mode == OrbView.Mode.LISTENING) return // elle écoute déjà
+            val listenMsg = getString(R.string.wake_listen)
+            status.text = listenMsg
+            launchNew {
+                if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
+                conversation(greet = listenMsg, voice = voice)
+            }
+            return
+        }
+
+        // Première secousse : « Sentia, regarde devant moi et dis-moi ce que tu vois. »
         val inSession = engine.conversation.messages.length() > 0
-        val hello = getString(if (inSession) R.string.greeting else R.string.greeting_first)
-        status.text = hello
-        orb.wake() // la boule apparaît et se met à battre (la vibration de réveil est déjà faite par WakeController)
-        if (settings.isDeafish) return // écran lisible, pas d'écoute automatique
+        val hello = getString(if (inSession) R.string.wake_here else R.string.wake_hello)
+        val spokenIntro = hello + " " + getString(R.string.wait_moment)
+        status.text = spokenIntro
         launchNew {
-            if (!ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
-            conversation(greet = hello, voice = true)
+            if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
+            // Le salut et « Attendez un instant » sont dits pendant que la photo est prise et analysée : pas de silence d'attente.
+            if (voice || voiceOn) {
+                greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(spokenIntro, replyLang(spokenIntro)) }
+            }
+            conversation(first = Lang.cameraPrompt(Lang.ui(settings.language)), voice = voice)
         }
     }
 
@@ -268,51 +365,47 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-        if (settings.shakeEnabled) {
-            try { ShakeService.start(this) } catch (_: Exception) {}
-        }
+        try { ShakeService.start(this) } catch (_: Exception) {}
     }
 
     // ---- Boutons --------------------------------------------------------------------------------------------
 
     /** Coupe tout ce qui est en cours (voix, micro, requête) puis lance le nouveau travail. */
     private fun launchNew(block: suspend () -> Unit) {
+        orb.mode = OrbView.Mode.IDLE // la boule arrête son animation de parole tout de suite (Stop, nouveau bouton…)
         speaker.interrupt() // d'abord : retient ce qu'il restait à dire pour « Continue »
         speech.cancel()
         job?.cancel()
         job = lifecycleScope.launch { try { block() } finally { orb.mode = OrbView.Mode.IDLE } }
     }
 
-    private fun onSpeakButton() = launchNew {
+    private fun onSpeakButton() {
+        if (liveActive()) { live?.interruptSpeech(); return }
+        if (liveWanted()) { launchNew { startLive(autoLook = false) }; return }
+        onSpeakClassic()
+    }
+
+    private fun onSpeakClassic() = launchNew {
         if (!ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
         conversation(voice = true, firstListenDelay = true)
     }
 
-    /** « Voir avec SENTIA » : SENTIA invite à montrer, écoute la question ; sans question, elle décrit ce qui est devant. */
-    private fun onSeeButton() = launchNew {
-        val lang = Lang.ui(settings.language)
-        val hint = getString(R.string.see_hint)
-        status.text = hint
-        val voice = !settings.isDeafish
-        if (voice && ensurePermission(Manifest.permission.RECORD_AUDIO)) {
-            val heard = speakWithListening(hint, speak = settings.voiceReplies || settings.isBlindish, listen = true, timeoutMs = SEE_WAIT_MS)
-            conversation(first = if (heard == null) Lang.cameraPrompt(lang) else null, heard = heard, voice = true)
-        } else {
-            conversation(first = Lang.cameraPrompt(lang), voice = false)
-        }
+    /** « Voir avec SENTIA » : comme la secousse, SENTIA regarde tout de suite, décrit à voix haute, puis écoute. */
+    private fun onSeeButton() {
+        if (liveActive()) { live?.sendText(Lang.cameraPrompt(Lang.ui(settings.language))); return }
+        if (liveWanted()) { launchNew { startLive(autoLook = true) }; return }
+        onSeeClassic()
     }
 
-    private fun onSoundsButton() {
-        if (!settings.soundsEnabled) {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.sounds_off_title)
-                .setMessage(R.string.sounds_off_msg)
-                .setPositiveButton(R.string.settings_button) { _, _ -> startActivity(Intent(this, SettingsActivity::class.java)) }
-                .setNegativeButton(R.string.cancel_button, null)
-                .show()
-            return
+    private fun onSeeClassic() = launchNew {
+        status.text = getString(R.string.see_hint)
+        val voice = !settings.isDeafish
+        if (voice && !ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return@launchNew }
+        if (voice || voiceOn) {
+            val wait = getString(R.string.wait_moment)
+            greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(wait, replyLang(wait)) }
         }
-        launchNew { conversation(first = Lang.soundsPrompt(Lang.ui(settings.language)), voice = !settings.isDeafish) }
+        conversation(first = Lang.cameraPrompt(Lang.ui(settings.language)), voice = voice)
     }
 
     private fun toggleWrite() {
@@ -321,11 +414,88 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         if (writePanel.visibility == View.VISIBLE) input.requestFocus()
     }
 
-    private fun onTyped(text: String) = launchNew { conversation(first = text, voice = false) }
+    private fun onTyped(text: String) {
+        if (liveActive()) { live?.sendText(text); return }
+        launchNew { conversation(first = text, voice = false) }
+    }
 
-    private fun onStopButton() = launchNew { conversation(command = VoiceCommand.STOP, voice = false) } // Stop = on coupe tout, le micro ne se rouvre pas
+    private fun onStopButton() {
+        if (liveActive()) { live?.interruptSpeech(); return } // en direct, Stop coupe seulement la parole : la conversation continue
+        launchNew { conversation(command = VoiceCommand.STOP, voice = false) }
+    } // Stop = on coupe tout, le micro ne se rouvre pas
 
-    private fun onRepeatButton() = launchNew { conversation(command = VoiceCommand.REPEAT, voice = false) }
+    private fun onRepeatButton() {
+        if (liveActive()) { live?.sendText("Répète ta dernière réponse."); return }
+        launchNew { conversation(command = VoiceCommand.REPEAT, voice = false) }
+    }
+
+    // ---- Conversation en direct (Gemini Live) --------------------------------------------------------------------
+
+    /**
+     * Ouvre la conversation en direct : micro et voix en continu, UNE photo à la demande de l'IA (jamais de caméra continue).
+     * Si la session ne peut pas démarrer (réseau, facturation, modèle…), on se replie sur le mode classique.
+     * @param autoLook SENTIA regarde tout de suite (réveil, ouverture de l'application) ; sinon elle attend que la personne parle.
+     */
+    private suspend fun startLive(autoLook: Boolean) {
+        if (!ensurePermission(Manifest.permission.RECORD_AUDIO)) { showError(getString(R.string.error_mic_permission)); return }
+        val lang = Lang.ui(settings.language)
+        status.text = getString(R.string.live_connecting)
+        reply.text = ""
+        orb.mode = OrbView.Mode.THINKING
+        val session = LiveSession(this, client, object : LiveSession.Ui {
+            override fun onState(state: LiveSession.State) {
+                orb.mode = when (state) {
+                    LiveSession.State.CONNECTING -> OrbView.Mode.THINKING
+                    LiveSession.State.LISTENING -> OrbView.Mode.LISTENING
+                    LiveSession.State.SPEAKING -> OrbView.Mode.SPEAKING
+                    LiveSession.State.LOOKING -> OrbView.Mode.ANALYZING_CAMERA
+                }
+                status.text = when (state) {
+                    LiveSession.State.LISTENING -> getString(R.string.listening)
+                    LiveSession.State.LOOKING -> getString(R.string.thinking)
+                    else -> ""
+                }
+            }
+            override fun onCaption(text: String) { reply.text = text; lastReply = text }
+            override suspend fun capturePhoto(): String {
+                if (!ensurePermission(Manifest.permission.CAMERA)) throw AgentException(AgentException.Kind.DENIED, "caméra refusée")
+                Vibe.play(this@AssistantActivity, HapticPattern.INFO) // la personne sent qu'une photo est prise (et envoyée à l'IA)
+                return withTimeoutOrNull(AnalysisPolicy.CAPTURE_MAX_MS) { CameraCapture.capture(this@AssistantActivity, this@AssistantActivity, highRes = true) }
+                    ?: throw AgentException(AgentException.Kind.IMAGE, "capture")
+            }
+            override suspend fun notice(n: LiveSession.Notice) {
+                val res = when (n) {
+                    LiveSession.Notice.RECONNECTING -> R.string.live_reconnecting
+                    LiveSession.Notice.LOST -> R.string.live_lost
+                    LiveSession.Notice.IDLE -> R.string.live_idle
+                    LiveSession.Notice.MIC_ERROR -> R.string.error_mic_permission
+                }
+                sayChecked(getString(res), lang)
+            }
+        })
+        live = session
+        try {
+            val end = session.run(if (autoLook) Lang.cameraPrompt(lang) else null)
+            status.text = ""
+            orb.mode = OrbView.Mode.IDLE
+            when (end) {
+                LiveSession.End.IDLE -> sayChecked(getString(R.string.live_idle), lang)
+                LiveSession.End.LOST -> sayChecked(getString(R.string.live_lost), lang)
+                LiveSession.End.USER -> {}
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: AgentException) {
+            // Le mode direct n'a pas pu démarrer : on garde une trace lisible (Réglages → Diagnostic) et on passe au mode classique.
+            settings.diagPerf = "Conversation en direct indisponible : ${e.kind.name}" + (e.message?.let { " – $it" } ?: "")
+            if (live === session) live = null
+            status.text = getString(R.string.live_unavailable)
+            sayChecked(getString(R.string.live_unavailable), lang)
+            if (autoLook) conversation(first = Lang.cameraPrompt(lang), voice = true) else conversation(voice = true, firstListenDelay = true)
+        } finally {
+            if (live === session) live = null // une session plus récente ne doit pas être effacée par la fin de celle-ci
+        }
+    }
 
     // ---- Conversation -------------------------------------------------------------------------------------------
 
@@ -385,7 +555,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
                     // La question est dite (ou affichée) ; on écoute la réponse tout de suite.
                     file = speakWithListening(
                         getString(R.string.error_no_speech),
-                        speak = settings.voiceReplies && !settings.isDeafish, listen = true, timeoutMs = NO_SPEECH_MS,
+                        speak = voiceOn && !settings.isDeafish, listen = true, timeoutMs = NO_SPEECH_MS,
                     )
                     listened = true
                     continue
@@ -413,20 +583,42 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private suspend fun answer(prompt: String, voice: Boolean): File? {
         speaker.takeRemainder() // une nouvelle question remplace ce qu'il restait à dire
         status.text = getString(R.string.thinking)
-        orb.mode = OrbView.Mode.THINKING
         reply.text = ""
-        val answer = try {
-            engine.ask(prompt) { preface ->
-                reply.text = preface
-                if (settings.voiceReplies) lifecycleScope.launch { speaker.say(preface, replyLang(preface)) }
-            }
-        } catch (e: AgentException) {
-            showError(messageFor(e)); return ENDED
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            showError(getString(R.string.error_generic)); return ENDED
+        // Demande de regarder : UNE photo (vérifiée, caméra libérée aussitôt) → IA → réponse dite à voix haute. Aucune attente avant la photo.
+        val look = isLookPrompt(prompt) || needsFreshLook(prompt)
+        orb.mode = if (look) OrbView.Mode.ANALYZING_CAMERA else OrbView.Mode.THINKING
+        val onPreface: (String) -> Unit = { preface ->
+            reply.text = preface
+            if (voiceOn && greetJob?.isActive != true) lifecycleScope.launch { speaker.say(preface, replyLang(preface)) }
         }
+        // Question de sécurité / « regarde » sans salut en cours : « Je regarde. » pendant la capture (court, pas de silence).
+        if (look && greetJob == null && voiceOn && !settings.isDeafish) {
+            val wait = getString(R.string.wait_moment)
+            greetJob = lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) { sayChecked(wait, replyLang(wait)) }
+        }
+        // Simple phrase de patience, dite UNE fois si la réponse tarde : ce n'est ni une attente avant l'analyse ni un délai maximal.
+        val hold = if (look && voiceOn && !settings.isDeafish) lifecycleScope.launch {
+            delay(AnalysisPolicy.REASSURE_AT_MS)
+            sayChecked(getString(R.string.analysis_still), Lang.ui(settings.language))
+            orb.mode = OrbView.Mode.ANALYZING_CAMERA
+        } else null
+        val answer = try {
+            try {
+                if (look) engine.askLook(prompt, onPreface) else engine.ask(prompt, onPreface)
+            } catch (e: AgentException) {
+                if (e.kind == AgentException.Kind.IMAGE) getString(R.string.image_unclear) // photo inutilisable (2 captures) : rien n'est envoyé à l'IA
+                else if (e.kind == AgentException.Kind.TIMEOUT) getString(R.string.analysis_failed) // délai maximal écoulé : message dit à voix haute
+                else { showError(messageFor(e), detailFor(e)); return ENDED }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                showError(getString(R.string.error_generic)); return ENDED
+            }
+        } finally {
+            hold?.cancel()
+        }
+        greetJob?.join() // le salut finit avant la description
+        greetJob = null
         lastReply = answer
         status.text = ""
         reply.text = answer
@@ -434,9 +626,22 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         return deliver(answer, voice)
     }
 
+    /**
+     * Questions sur l'instant présent ou la sécurité (« Est-ce que je peux avancer ? », « C'est libre ? ») : la scène a peut-être
+     * changé depuis la dernière photo, on en prend une nouvelle. Les autres questions de suivi (« Qu'est-ce qu'il y a à gauche ? »)
+     * gardent le contexte de la scène déjà analysée : plus rapide et cohérent.
+     */
+    private fun needsFreshLook(p: String): Boolean = FreshPhoto.needed(p)
+
+    private fun isLookPrompt(p: String): Boolean {
+        val l = Lang.ui(settings.language)
+        return p == Lang.cameraPrompt(l) || p == Lang.lookAgainPrompt(l) || p == Lang.readTextPrompt(l) ||
+            p == Lang.describeScenePrompt(l) || p == Lang.banknotePrompt(l)
+    }
+
     /** Dit la réponse (voix prioritaire pour les profils aveugle / malvoyant) et, en mode voix, écoute la suite. */
     private suspend fun deliver(text: String, voice: Boolean): File? {
-        if (settings.voiceReplies) return speakWithListening(text, speak = true, listen = voice, timeoutMs = NO_SPEECH_MS)
+        if (voiceOn) return speakWithListening(text, speak = true, listen = voice, timeoutMs = NO_SPEECH_MS)
         reply.announceForAccessibility(text)
         return if (voice) listenOnce(false) else null
     }
@@ -456,26 +661,29 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             }
             VoiceCommand.CONTINUE -> {
                 val rest = speaker.takeRemainder()
-                if (rest != null) return speakWithListening(rest, speak = settings.voiceReplies, listen = voice, timeoutMs = NO_SPEECH_MS)
+                if (rest != null) return speakWithListening(rest, speak = voiceOn, listen = voice, timeoutMs = NO_SPEECH_MS)
                 return answer(Lang.continuePrompt(lang), voice)
             }
             VoiceCommand.REPEAT -> {
                 speaker.takeRemainder()
                 if (lastReply.isEmpty()) return if (voice) listenOnce(false) else ENDED
                 reply.text = lastReply
-                if (!settings.voiceReplies) { reply.announceForAccessibility(lastReply); return if (voice) listenOnce(false) else ENDED }
+                if (!voiceOn) { reply.announceForAccessibility(lastReply); return if (voice) listenOnce(false) else ENDED }
                 return speakWithListening(lastReply, speak = true, listen = voice, timeoutMs = NO_SPEECH_MS)
             }
             VoiceCommand.LOOK_AGAIN -> return answer(Lang.lookAgainPrompt(lang), voice)
             VoiceCommand.READ_TEXT -> return answer(Lang.readTextPrompt(lang), voice)
             VoiceCommand.DESCRIBE_SCENE -> return answer(Lang.describeScenePrompt(lang), voice)
+            VoiceCommand.BANKNOTE -> return answer(Lang.banknotePrompt(lang), voice)
             VoiceCommand.CLOSE_CAMERA -> {
                 engine.conversation.dropImages()
                 val msg = getString(R.string.camera_closed)
                 status.text = msg
-                return speakWithListening(msg, speak = settings.voiceReplies, listen = voice, timeoutMs = NO_SPEECH_MS)
+                return speakWithListening(msg, speak = voiceOn, listen = voice, timeoutMs = NO_SPEECH_MS)
             }
         }
+        @Suppress("UNREACHABLE_CODE")
+        return null
     }
 
     // ---- Voix et micro --------------------------------------------------------------------------------------------
@@ -506,7 +714,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private suspend fun sayChecked(text: String, lang: String) {
         orb.mode = OrbView.Mode.SPEAKING
         val ok = try { speaker.say(text, lang) } finally { orb.mode = OrbView.Mode.IDLE }
-        if (!ok) status.text = getString(R.string.error_no_voice)
+        if (!ok) status.text = getString(R.string.error_no_voice) + (speaker.lastError?.let { " ($it)" } ?: "")
     }
 
     /** Écoute normale (micro ouvert, on attend la parole). */
@@ -517,7 +725,11 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         // Laisse finir l'annonce du lecteur d'écran / la fin de la voix avant d'ouvrir le micro (sinon il s'écoute lui-même).
         delay(if (settle && isScreenReaderOn()) 900L else if (afterSpeech) 350L else 150L)
         val f = speech.record(noSpeechTimeoutMs = timeoutMs)
-        if (f == null) lastDiagnostic = speech.startError?.let { "micro: $it" } ?: "niveau ${speech.lastPeak}"
+        if (f == null) {
+            lastDiagnostic = speech.startError?.let { "micro : $it" } ?: "niveau sonore ${speech.lastPeak}"
+            // Micro refusé, occupé ou muet : on le dit tout de suite à l'écran (la cause n'est pas « je n'ai pas compris »).
+            speech.startError?.let { status.text = "🎤 $it" }
+        }
         return f
     }
 
@@ -528,11 +740,11 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         status.text = getString(R.string.thinking)
         orb.mode = OrbView.Mode.THINKING
         return try {
-            val (t, lang) = withContext(Dispatchers.IO) { client.transcribe(file).also { file.delete() } }
+            val (t, lang) = try { client.transcribe(file) } finally { file.delete() }
             lastSpokenLang = lang
             t
         } catch (e: AgentException) {
-            showError(messageFor(e)); null
+            showError(messageFor(e), detailFor(e)); null
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -550,9 +762,9 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         if (lastDiagnostic.isNotEmpty()) reply.text = "(" + lastDiagnostic + ")" // aide au test ; à retirer pour la version finale
     }
 
-    private fun showError(message: String) {
-        status.text = message
-        if (settings.voiceReplies && !settings.isDeafish) lifecycleScope.launch { speaker.say(message, Lang.ui(settings.language)) }
+    private fun showError(message: String, detail: String = "") {
+        status.text = message + detail // le détail technique est affiché, jamais lu à voix haute
+        if (voiceOn && !settings.isDeafish) lifecycleScope.launch { speaker.say(message, Lang.ui(settings.language)) }
         if (settings.isDeafish) Vibe.play(this, HapticPattern.ATTENTION)
     }
 
@@ -569,6 +781,12 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             else -> R.string.error_generic
         }
     )
+
+    /** Cause technique affichée sous le message (code HTTP, etc.) : indispensable pour trouver pourquoi « je n'ai pas pu répondre ». */
+    private fun detailFor(e: AgentException): String = when (e.kind) {
+        AgentException.Kind.NETWORK, AgentException.Kind.CONFIG -> ""
+        else -> "\n[" + e.kind.name + (e.message?.let { " – $it" } ?: "") + "]"
+    }
 
     private fun isScreenReaderOn(): Boolean =
         (getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager).isTouchExplorationEnabled
@@ -593,7 +811,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             .create()
         dialog.show()
         cont.invokeOnCancellation { dialog.dismiss() }
-        if (settings.voiceReplies) lifecycleScope.launch { speaker.say("$title $message", replyLang(message)) }
+        if (voiceOn) lifecycleScope.launch { speaker.say("$title $message", replyLang(message)) }
     }
 
     companion object {

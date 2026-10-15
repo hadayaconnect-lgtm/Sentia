@@ -3,7 +3,7 @@ package dj.sentia.core
 import java.text.Normalizer
 
 /** Commandes vocales courtes, reconnues localement (sans passer par l'IA) pour réagir tout de suite. */
-enum class VoiceCommand { STOP, PAUSE, CONTINUE, REPEAT, LOOK_AGAIN, READ_TEXT, DESCRIBE_SCENE, CLOSE_CAMERA }
+enum class VoiceCommand { STOP, PAUSE, CONTINUE, REPEAT, LOOK_AGAIN, READ_TEXT, DESCRIBE_SCENE, BANKNOTE, CLOSE_CAMERA }
 
 /**
  * Reconnaissance de commandes dans le texte transcrit (français, anglais, somali, arabe).
@@ -58,17 +58,22 @@ object VoiceCommands {
     private val LOOK_AGAIN = setOf(
         "regarde encore", "regarde a nouveau", "regarde de nouveau", "regarde encore une fois", "re regarde", "regarde une autre fois",
         "nouvelle analyse", "nouvelle photo", "prends une autre photo", "reprends une photo", "look again", "look once more",
-        "scan again", "take another photo", "take another picture", "mar kale eeg", "انظر مره اخري", "انظر مجددا", "شوف مره ثانيه", "صور مره اخري",
+        "regarde devant moi", "regarde devant", "look in front of me", "scan again", "take another photo", "take another picture", "mar kale eeg", "انظر مره اخري", "انظر مجددا", "شوف مره ثانيه", "صور مره اخري",
     )
     private val READ_TEXT = setOf(
         "lis ca", "lis moi ca", "lis ce texte", "lis le texte", "lis ce document", "lis le document", "lis ce qui est ecrit",
-        "lis moi ce texte", "lis moi le texte", "lis", "read this", "read it", "read this text", "read that", "read the text",
+        "lis moi ce texte", "lis moi le texte", "lis le panneau", "lis le document", "lis l etiquette", "lis moi le panneau", "lis moi le document", "lis", "read this", "read it", "read this text", "read that", "read the text",
         "akhri kan", "akhri qoraalkan", "اقرا هذا", "اقرا النص", "اقرا لي هذا", "اقرا", "اقرا لي النص",
     )
     private val DESCRIBE_SCENE = setOf(
         "decris la scene", "decris moi la scene", "decris la scene devant moi", "decris l environnement", "decris moi l environnement",
         "decris la piece", "decris ce qui m entoure", "describe the scene", "describe the scene again", "describe the surroundings",
         "describe what is around me", "ku sifee goobta", "صف المشهد", "صف لي المشهد", "صف ما حولي",
+    )
+    private val BANKNOTE = setOf(
+        "quel est ce billet", "quel billet est ce", "c est quel billet", "quel billet", "identifie ce billet", "identifie le billet",
+        "reconnais ce billet", "combien vaut ce billet", "what banknote is this", "which banknote is this", "what bill is this",
+        "identify this bill", "identify this banknote", "billet", "yaa waa xaashidan lacagta", "ما هذه الورقة النقدية", "اي ورقة نقدية هذه", "كم قيمة هذه الورقة",
     )
     private val CLOSE_CAMERA = setOf(
         "ferme la camera", "fermer la camera", "ferme camera", "quitte la camera", "arrete la camera", "desactive la camera",
@@ -83,6 +88,7 @@ object VoiceCommands {
     private val TABLE: List<Pair<VoiceCommand, Set<String>>> = listOf(
         VoiceCommand.LOOK_AGAIN to norm(LOOK_AGAIN),
         VoiceCommand.DESCRIBE_SCENE to norm(DESCRIBE_SCENE),
+        VoiceCommand.BANKNOTE to norm(BANKNOTE),
         VoiceCommand.CLOSE_CAMERA to norm(CLOSE_CAMERA),
         VoiceCommand.READ_TEXT to norm(READ_TEXT),
         VoiceCommand.REPEAT to norm(REPEAT),
