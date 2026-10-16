@@ -474,6 +474,8 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             }
         })
         live = session
+        // L'écran reste allumé pendant la conversation en direct (sinon Android l'éteint, coupe l'écoute et la conversation s'arrête).
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         try {
             val end = session.run(if (autoLook) Lang.cameraPrompt(lang) else Lang.liveReadyPrompt(lang))
             status.text = ""
@@ -493,6 +495,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
             sayChecked(getString(R.string.live_unavailable), lang)
             if (autoLook) conversation(first = Lang.cameraPrompt(lang), voice = true) else conversation(voice = true, firstListenDelay = true)
         } finally {
+            if (live == null || live === session) window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             if (live === session) live = null // une session plus récente ne doit pas être effacée par la fin de celle-ci
         }
     }
