@@ -24,7 +24,7 @@ class OnboardingActivity : AppCompatActivity() {
             .setCancelable(false)
             .setPositiveButton(R.string.ob_accept) { _, _ ->
                 settings.profile = profile
-                startActivity(Intent(this, AssistantActivity::class.java).putExtra(AssistantActivity.EXTRA_WAKE, profile == "blind" || profile == "both"))
+                startActivity(Intent(this, SetupActivity::class.java).putExtra(AssistantActivity.EXTRA_WAKE, profile == "blind" || profile == "both"))
                 finish()
             }
             .show()

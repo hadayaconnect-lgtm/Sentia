@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="su_perm_title">Setting up SENTIA</string>
+    <string name="su_perm_msg">First I will ask for three permissions: microphone, camera and notifications. For each window, choose Allow.</string>
+    <string name="su_perm_btn">Ask for permissions</string>
+    <string name="su_a11y_title">Wake with the volume keys</string>
+    <string name="su_a11y_msg">Last step. Press the button at the bottom of the screen. In the list, find SENTIA volume keys, turn it on and confirm. If the phone refuses, open the SENTIA app info, tap the three dots at the top right, choose Allow restricted settings, then try again. Then come back here.</string>
+    <string name="su_a11y_btn">Open accessibility settings</string>
+    <string name="su_a11y_retry">It is not turned on yet. Press the button, find SENTIA volume keys, and turn it on. Or choose Later.</string>
+    <string name="su_later">Later</string>
+    <string name="su_ready_title">All set</string>
+    <string name="su_ready_msg">All set. To wake me, press Volume up quickly three times, or shake the phone.</string>
+    <string name="su_ready_btn">Start</string>
+</resources>
