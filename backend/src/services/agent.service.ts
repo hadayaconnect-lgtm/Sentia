@@ -40,7 +40,7 @@ export async function runAgentTurn(params: AgentParams): Promise<AgentResult> {
     }),
     messages: params.messages,
     tools: toolsAvailable ? TOOLS : undefined,
-    maxTokens: 700,
+    maxTokens: 400,
   });
 
   const text = result.content
