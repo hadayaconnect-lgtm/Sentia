@@ -40,8 +40,12 @@ class Settings(context: Context) {
 
     val voiceReplies: Boolean get() = profile != "deaf"
 
-    /** « Stop » à la voix pendant que SENTIA parle : toujours actif (le micro filtre l'écho et ignore le début de chaque phrase). */
-    val bargeIn: Boolean get() = true
+    /**
+     * Couper SENTIA en parlant par-dessus : désactivé. Sur le haut-parleur du téléphone, le micro entend la voix de SENTIA
+     * et la prend pour celle de la personne : la réponse se coupait toute seule après une phrase. Le bouton Stop reste là,
+     * et SENTIA écoute dès qu'il a fini de parler.
+     */
+    val bargeIn: Boolean get() = false
 
     // Diagnostic de la veille (affiché dans les Réglages) : jamais envoyé nulle part.
     var diagServiceAt: Long
