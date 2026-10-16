@@ -4,7 +4,7 @@ import { buildLiveInstruction, createLiveSession, LIVE_TOOLS } from "@/services/
 
 describe("conversation en direct : jeton éphémère", () => {
   const saved = { ...process.env };
-  beforeEach(() => { process.env.GEMINI_API_KEY = "SECRET-KEY-SECRET-KEY-SECRET-KEY-123"; delete process.env.LIVE_MODEL; delete process.env.LIVE_WS_URL; });
+  beforeEach(() => { process.env.GEMINI_API_KEY = "SECRET-KEY-SECRET-KEY-SECRET-KEY-123"; delete process.env.LIVE_MODEL; delete process.env.LIVE_WS_URL; process.env.LIVE_PROVIDER = "gemini"; });
   afterEach(() => { process.env = { ...saved }; });
 
   it("demande un jeton à usage unique, limité au modèle et à l'audio, avec la clé en en-tête seulement", async () => {
@@ -67,5 +67,62 @@ describe("conversation en direct : consignes", () => {
     assert.deepEqual(names, ["capture_camera", "get_time"]);
     const cam = LIVE_TOOLS[0].functionDeclarations[0].parameters as { properties: { purpose: { enum: string[] } } };
     assert.ok(cam.properties.purpose.enum.includes("money"));
+  });
+});
+
+describe("conversation en direct : OpenAI Realtime (par défaut)", () => {
+  const saved = { ...process.env };
+  beforeEach(() => { process.env.OPENAI_API_KEY = "sk-SECRET-SECRET-SECRET-SECRET-SECRET-123"; delete process.env.LIVE_PROVIDER; delete process.env.OPENAI_LIVE_MODEL; delete process.env.OPENAI_LIVE_VOICE; delete process.env.OPENAI_LIVE_URL; });
+  afterEach(() => { process.env = { ...saved }; });
+
+  it("crée une clé temporaire chez OpenAI ; la vraie clé ne quitte jamais le serveur", async () => {
+    let seen: { url: string; init: RequestInit } | null = null;
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      seen = { url, init };
+      return new Response(JSON.stringify({ value: "ek_temp_123", expires_at: 1 }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const out = await createLiveSession({ lang: "fr", profile: "blind", fetchImpl });
+    assert.equal(seen!.url, "https://api.openai.com/v1/realtime/client_secrets");
+    assert.equal((seen!.init.headers as Record<string, string>).Authorization, `Bearer ${process.env.OPENAI_API_KEY}`);
+    const body = JSON.parse(seen!.init.body as string);
+    assert.equal(body.session.type, "realtime");
+    assert.equal(body.session.model, "gpt-realtime-2");
+    assert.equal(body.session.audio.output.voice, "marin");
+    assert.equal(out.provider, "openai");
+    assert.equal(out.token, "ek_temp_123");
+    assert.deepEqual(out.urls, ["wss://api.openai.com/v1/realtime?model=gpt-realtime-2"]);
+    assert.equal(out.voice, "marin");
+    const tools = out.tools as { type: string; name: string }[];
+    assert.ok(tools.every((t) => t.type === "function") && tools.some((t) => t.name === "capture_camera"));
+    assert.ok(out.instruction.includes("capture_camera"));
+    assert.ok(!JSON.stringify(out).includes("SECRET"), "la clé secrète ne doit jamais être renvoyée");
+  });
+
+  it("modèle, voix et adresse modifiables par variables d'environnement", async () => {
+    process.env.OPENAI_LIVE_MODEL = "gpt-realtime-2.1";
+    process.env.OPENAI_LIVE_VOICE = "cedar";
+    const fetchImpl = (async () => new Response(JSON.stringify({ value: "ek_x" }), { status: 200 })) as unknown as typeof fetch;
+    const out = await createLiveSession({ lang: null, profile: "blind", fetchImpl });
+    assert.equal(out.model, "gpt-realtime-2.1");
+    assert.equal(out.voice, "cedar");
+    assert.ok(out.urls[0].endsWith("?model=gpt-realtime-2.1"));
+  });
+
+  it("refus d'OpenAI : message clair avec le code HTTP, sans clé", async () => {
+    const fetchImpl = (async () => new Response('{"error":{"message":"Incorrect key sk-SECRET-SECRET-SECRET-SECRET-SECRET-123"}}', { status: 401 })) as unknown as typeof fetch;
+    await assert.rejects(createLiveSession({ lang: null, profile: "blind", fetchImpl }), (e: Error) => /401/.test(e.message) && !e.message.includes("SECRET"));
+  });
+
+  it("réponse sans clé temporaire : refusée", async () => {
+    const fetchImpl = (async () => new Response("{}", { status: 200 })) as unknown as typeof fetch;
+    await assert.rejects(createLiveSession({ lang: null, profile: "blind", fetchImpl }));
+  });
+
+  it("LIVE_PROVIDER=gemini garde Gemini Live disponible", async () => {
+    process.env.GEMINI_API_KEY = "g-key-g-key-g-key-g-key-g-key-123456";
+    process.env.LIVE_PROVIDER = "gemini";
+    const fetchImpl = (async () => new Response(JSON.stringify({ name: "auth_tokens/abc" }), { status: 200 })) as unknown as typeof fetch;
+    const out = await createLiveSession({ lang: null, profile: "blind", fetchImpl });
+    assert.equal(out.provider, "gemini");
   });
 });

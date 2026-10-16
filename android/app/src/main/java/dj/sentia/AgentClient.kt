@@ -124,7 +124,7 @@ class AgentClient(context: Context) {
         }
     }
 
-    /** Jeton temporaire + consignes pour la conversation en direct (Gemini Live). La clé secrète reste sur le serveur. */
+    /** Jeton temporaire + consignes pour la conversation en direct (OpenAI Realtime ou Gemini Live). La clé secrète reste sur le serveur. */
     suspend fun liveToken(language: String, profile: String, localTime: String): LiveToken {
         val body = JSONObject().put("language", language).put("profile", profile.ifEmpty { "other" }).put("localTime", localTime)
             .toString().toRequestBody("application/json".toMediaType())
@@ -137,6 +137,8 @@ class AgentClient(context: Context) {
                 model = j.getString("model"),
                 instruction = j.getString("instruction"),
                 toolsJson = j.getJSONArray("tools").toString(),
+                provider = j.optString("provider", "gemini"),
+                voice = j.optString("voice", ""),
             )
         }
     }
@@ -163,4 +165,13 @@ class AgentClient(context: Context) {
 }
 
 /** Ce que le serveur donne pour ouvrir une conversation en direct. */
-class LiveToken(val token: String, val urls: List<String>, val model: String, val instruction: String, val toolsJson: String)
+class LiveToken(
+    val token: String,
+    val urls: List<String>,
+    val model: String,
+    val instruction: String,
+    val toolsJson: String,
+    /** « openai » ou « gemini » : décide du langage utilisé avec le serveur de voix. */
+    val provider: String = "gemini",
+    val voice: String = "",
+)

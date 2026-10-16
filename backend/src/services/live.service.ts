@@ -5,8 +5,8 @@ import { ApiError } from "@/lib/api";
 import type { Language, Profile } from "@/types";
 
 /**
- * Mode conversation en direct (Gemini Live) : le téléphone se connecte DIRECTEMENT à Google avec un jeton temporaire
- * créé ici. La vraie clé reste sur le serveur. Les consignes de sécurité sont les mêmes que pour le mode classique.
+ * Mode conversation en direct (OpenAI Realtime, ou Gemini Live) : le téléphone se connecte DIRECTEMENT au fournisseur avec un
+ * jeton temporaire créé ici. La vraie clé reste sur le serveur. Les consignes de sécurité sont les mêmes que pour le mode classique.
  */
 
 export const LIVE_TOOLS = [
@@ -33,6 +33,28 @@ export const LIVE_TOOLS = [
   },
 ];
 
+/** Mêmes outils, au format OpenAI Realtime (« function » à plat, schéma JSON en minuscules). */
+export const LIVE_TOOLS_OPENAI = [
+  {
+    type: "function",
+    name: "capture_camera",
+    description:
+      "Prend UNE photo avec la caméra arrière du téléphone et la place dans la conversation. À utiliser seulement quand la personne demande de regarder, lire, identifier ou vérifier ce qui est devant elle. Une seule photo par demande.",
+    parameters: {
+      type: "object",
+      properties: {
+        purpose: {
+          type: "string",
+          enum: [...CAMERA_PURPOSES],
+          description: "scene (environnement), document ou text (lire du texte), money (billet de banque), object ou color",
+        },
+      },
+      required: ["purpose"],
+    },
+  },
+  { type: "function", name: "get_time", description: "Donne la date et l'heure locales du téléphone.", parameters: { type: "object", properties: {} } },
+];
+
 const LIVE_ADDENDUM = [
   "Mode conversation en direct (tu parles à voix haute, en continu) :",
   "- Tu es le compagnon vocal d'une personne aveugle ou malvoyante : chaleureux, calme, bref. Une à trois phrases, sauf si la personne demande des détails.",
@@ -51,11 +73,14 @@ export function buildLiveInstruction(lang: Language | null, profile: Profile, lo
 }
 
 export interface LiveSessionInfo {
+  /** « openai » ou « gemini » : le téléphone en déduit le langage à parler avec le serveur de voix. */
+  provider: "openai" | "gemini";
   token: string;
   urls: string[];
   model: string;
+  voice: string;
   instruction: string;
-  tools: typeof LIVE_TOOLS;
+  tools: unknown[];
   /** Durée pendant laquelle le jeton permet d'ouvrir une session. */
   startWithinSec: number;
 }
@@ -64,6 +89,7 @@ export interface LiveTokenOptions {
   lang: Language | null;
   profile: Profile;
   localTime?: string;
+  provider?: "openai" | "gemini";
   fetchImpl?: typeof fetch;
   now?: () => number;
 }
@@ -71,8 +97,49 @@ export interface LiveTokenOptions {
 const START_WITHIN_SEC = 90;
 const TOKEN_LIFETIME_SEC = 30 * 60;
 
-/** Crée un jeton éphémère à usage unique (1 session), limité à CE modèle et à la réponse audio. */
+function cleanDetail(text: string): string {
+  return text.replace(/[A-Za-z0-9_\-.]{28,}/g, "…").replace(/\s+/g, " ").slice(0, 160);
+}
+
+/** Crée le jeton temporaire de la conversation en direct chez le fournisseur choisi. */
 export async function createLiveSession(o: LiveTokenOptions): Promise<LiveSessionInfo> {
+  return (o.provider ?? env.liveProvider) === "gemini" ? createGeminiSession(o) : createOpenAiSession(o);
+}
+
+/** OpenAI Realtime : clé temporaire « ek_… » (valable quelques minutes pour OUVRIR la session), la vraie clé reste ici. */
+async function createOpenAiSession(o: LiveTokenOptions): Promise<LiveSessionInfo> {
+  const f = o.fetchImpl ?? fetch;
+  const model = env.openaiLiveModel;
+  const voice = env.openaiLiveVoice;
+  const res = await f("https://api.openai.com/v1/realtime/client_secrets", {
+    method: "POST",
+    headers: { "content-type": "application/json", Authorization: `Bearer ${env.openaiLiveApiKey}` },
+    body: JSON.stringify({
+      expires_after: { anchor: "created_at", seconds: START_WITHIN_SEC * 2 },
+      session: { type: "realtime", model, audio: { output: { voice } } },
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) {
+    const detail = cleanDetail(await res.text().catch(() => ""));
+    throw new ApiError(502, "live_token", `Jeton OpenAI refusé (HTTP ${res.status}) ${detail}`);
+  }
+  const data = (await res.json().catch(() => null)) as { value?: unknown } | null;
+  if (!data || typeof data.value !== "string" || !data.value) throw new ApiError(502, "live_token", "Jeton OpenAI illisible");
+  return {
+    provider: "openai",
+    token: data.value,
+    urls: [`${env.openaiLiveUrl}?model=${encodeURIComponent(model)}`],
+    model,
+    voice,
+    instruction: buildLiveInstruction(o.lang, o.profile, o.localTime),
+    tools: LIVE_TOOLS_OPENAI,
+    startWithinSec: START_WITHIN_SEC,
+  };
+}
+
+/** Gemini Live : jeton à usage unique, limité à CE modèle et à la réponse audio. */
+async function createGeminiSession(o: LiveTokenOptions): Promise<LiveSessionInfo> {
   const f = o.fetchImpl ?? fetch;
   const now = (o.now ?? Date.now)();
   const model = env.liveModel;
@@ -91,15 +158,17 @@ export async function createLiveSession(o: LiveTokenOptions): Promise<LiveSessio
     signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) {
-    const detail = (await res.text().catch(() => "")).replace(/[A-Za-z0-9_\-.]{28,}/g, "…").replace(/\s+/g, " ").slice(0, 160);
+    const detail = cleanDetail(await res.text().catch(() => ""));
     throw new ApiError(502, "live_token", `Jeton Live refusé (HTTP ${res.status}) ${detail}`);
   }
   const data = (await res.json().catch(() => null)) as { name?: unknown } | null;
   if (!data || typeof data.name !== "string" || !data.name) throw new ApiError(502, "live_token", "Jeton Live illisible");
   return {
+    provider: "gemini",
     token: data.name,
     urls: env.liveWsUrls,
     model: `models/${model}`,
+    voice: "",
     instruction: buildLiveInstruction(o.lang, o.profile, o.localTime),
     tools: LIVE_TOOLS,
     startWithinSec: START_WITHIN_SEC,

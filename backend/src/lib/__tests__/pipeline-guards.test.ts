@@ -76,13 +76,13 @@ describe("conversation en direct (code Android)", () => {
   const activity = src("AssistantActivity.kt");
 
   it("jamais de flux d'images : un seul envoi de photo, déclenché par l'outil, une photo par demande", () => {
-    assert.equal((session.match(/LiveProtocol\.photo\(/g) ?? []).length, 1);
+    assert.equal((session.match(/wire\.photoResult\(/g) ?? []).length, 1);
     assert.match(session, /if \(!gate\.tryTake\(\)\)/);
     assert.doesNotMatch(audio, /ImageAnalysis|CameraX|ImageCapture/);
   });
 
   it("aucune clé secrète dans l'application", () => {
-    for (const f of ["LiveSession.kt", "AgentClient.kt", "core/LiveProtocol.kt", "Settings.kt"]) {
+    for (const f of ["LiveSession.kt", "AgentClient.kt", "core/LiveProtocol.kt", "core/LiveWire.kt", "Settings.kt"]) {
       assert.doesNotMatch(src(f), /AIza[0-9A-Za-z_-]{20,}|GEMINI_API_KEY|x-goog-api-key/);
     }
     assert.match(src("AgentClient.kt"), /\/api\/live-token/);

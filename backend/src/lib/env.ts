@@ -31,7 +31,14 @@ export const env = {
   },
   /** Modèle de secours si le modèle principal Gemini est surchargé (503) ou limité (429). Vide = pas de secours. */
   get geminiFallbackModel() { return optional("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash"); },
-  /** Mode conversation en direct (Gemini Live). Modèle et adresses WebSocket modifiables sans reconstruire l'application. */
+  /** Fournisseur de la conversation en direct : « openai » (Realtime, défaut) ou « gemini » (Live). Indépendant de AI_PROVIDER. */
+  get liveProvider(): "openai" | "gemini" { return process.env.LIVE_PROVIDER === "gemini" ? "gemini" : "openai"; },
+  /** OpenAI Realtime : modèle, voix et adresse modifiables sans reconstruire l'application. */
+  get openaiLiveModel() { return optional("OPENAI_LIVE_MODEL", "gpt-realtime-2"); },
+  get openaiLiveVoice() { return optional("OPENAI_LIVE_VOICE", "marin"); },
+  get openaiLiveUrl() { return optional("OPENAI_LIVE_URL", "wss://api.openai.com/v1/realtime"); },
+  get openaiLiveApiKey() { return required("OPENAI_API_KEY"); },
+  /** Mode conversation en direct avec Gemini Live (LIVE_PROVIDER=gemini). Modèle et adresses WebSocket modifiables sans reconstruire l'application. */
   get liveModel() { return optional("LIVE_MODEL", "gemini-3.8-live"); },
   get liveApiKey() { return required("GEMINI_API_KEY"); },
   get liveWsUrls(): string[] {

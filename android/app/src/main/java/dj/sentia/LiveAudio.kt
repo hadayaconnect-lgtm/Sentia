@@ -16,10 +16,10 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 /**
- * Micro de la conversation en direct : PCM 16 bits, 16 kHz, envoyé par morceaux de 40 ms.
+ * Micro de la conversation en direct : PCM 16 bits (16 kHz Gemini, 24 kHz OpenAI), envoyé par morceaux de 40 ms.
  * Source « communication » + annulation d'écho et réduction de bruit du téléphone quand ils existent.
  */
-class LiveMic(private val onChunk: (ByteArray) -> Unit) {
+class LiveMic(private val rate: Int, private val onChunk: (ByteArray) -> Unit) {
     private var rec: AudioRecord? = null
     private var thread: Thread? = null
     private var echo: AcousticEchoCanceler? = null
@@ -33,7 +33,6 @@ class LiveMic(private val onChunk: (ByteArray) -> Unit) {
     @SuppressLint("MissingPermission") // la permission est demandée avant d'ouvrir la session
     fun start(): Boolean {
         if (running) return true
-        val rate = LiveProtocol.SAMPLE_RATE_IN
         val chunk = rate / 25 * 2 // 40 ms en octets (16 bits)
         val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (min <= 0) return false

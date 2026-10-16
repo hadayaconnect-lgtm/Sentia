@@ -11,7 +11,8 @@ sealed class LiveEvent {
     /** La personne a pris la parole : il faut vider ce qui restait à jouer. */
     object Interrupted : LiveEvent()
     object TurnComplete : LiveEvent()
-    class InputText(val text: String) : LiveEvent()
+    /** `complete` : le fournisseur donne la phrase entière d'un coup (OpenAI), sinon ce sont des morceaux à cumuler (Gemini). */
+    class InputText(val text: String, val complete: Boolean = false) : LiveEvent()
     class OutputText(val text: String) : LiveEvent()
     class ToolCall(val calls: List<Call>) : LiveEvent()
     class ToolCancel(val ids: List<String>) : LiveEvent()

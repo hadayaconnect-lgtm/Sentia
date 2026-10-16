@@ -292,6 +292,46 @@ fun main() {
     check("serveur : message inconnu ignoré", LiveProtocol.parse("{\"autre\":1}").isEmpty())
     check("JSON : unicode, échappements, imbrications", (MiniJson.parse("{\"a\":[1,{\"b\":\"\\u00e9\\n\"}],\"c\":null,\"d\":true}") as Map<*, *>).let { ((it["a"] as List<*>)[1] as Map<*, *>)["b"] == "é\n" && it["c"] == null && it["d"] == true })
 
+    println("\n== Conversation en direct : OpenAI Realtime")
+    fun obj(j: String) = MiniJson.parseObject(j)!!
+    fun mp(v: Any?) = v as Map<*, *>
+    val ow = OpenAiWire
+    val openMsg = obj(ow.open("gpt-realtime-2", "Tu es \"SENTIA\".\nBref.", "[{\"type\":\"function\",\"name\":\"get_time\"}]", "marin", null).single())
+    val sess = mp(openMsg["session"])
+    check("OpenAI : session.update « realtime », consignes et outils tels quels", openMsg["type"] == "session.update" && sess["type"] == "realtime" && sess["instructions"] == "Tu es \"SENTIA\".\nBref." && (sess["tools"] as List<*>).size == 1)
+    check("OpenAI : voix PCM 24 kHz dans les deux sens, voix choisie", mp(mp(mp(sess["audio"])["input"])["format"])["rate"] == 24000.0 && mp(mp(mp(sess["audio"])["output"])["format"])["rate"] == 24000.0 && mp(mp(sess["audio"])["output"])["voice"] == "marin")
+    check("OpenAI : réponse en audio seulement", (sess["output_modalities"] as List<*>) == listOf("audio"))
+    check("OpenAI : micro à 24 kHz", ow.sampleRateIn == 24_000)
+    check("OpenAI : jeton dans l'en-tête, adresse inchangée", ow.headers("ek_1")["Authorization"] == "Bearer ek_1" && ow.url("wss://x/v1/realtime?model=m", "ek_1") == "wss://x/v1/realtime?model=m")
+    val au2 = obj(ow.audio("QUJD"))
+    check("OpenAI : audio du micro", au2["type"] == "input_audio_buffer.append" && au2["audio"] == "QUJD")
+    val tx = ow.text("Regarde \"ça\"").map { obj(it) }
+    check("OpenAI : texte = message utilisateur puis demande de réponse", tx.size == 2 && tx[0]["type"] == "conversation.item.create" && tx[1]["type"] == "response.create" &&
+        (((mp(tx[0]["item"])["content"] as List<*>)[0]) as Map<*, *>)["text"] == "Regarde \"ça\"")
+    val pr = ow.photoResult("call_9", "capture_camera", "QQ==", "Photo reçue.").map { obj(it) }
+    check("OpenAI : résultat d'outil, UNE photo JPEG, puis réponse (dans cet ordre)", pr.size == 3 &&
+        mp(pr[0]["item"])["type"] == "function_call_output" && mp(pr[0]["item"])["call_id"] == "call_9" && mp(pr[0]["item"])["output"] == "Photo reçue." &&
+        (((mp(pr[1]["item"])["content"] as List<*>)[0]) as Map<*, *>).let { it["type"] == "input_image" && it["image_url"] == "data:image/jpeg;base64,QQ==" } &&
+        pr[2]["type"] == "response.create")
+    val te = ow.toolResult("c2", "capture_camera", "non", true).map { obj(it) }
+    check("OpenAI : outil en erreur = résultat marqué « Erreur » puis réponse", te.size == 2 && (mp(te[0]["item"])["output"] as String).startsWith("Erreur") && te[1]["type"] == "response.create")
+    check("OpenAI : session prête (session.updated)", ow.parse("{\"type\":\"session.updated\",\"session\":{}}").single() is LiveEvent.SetupComplete)
+    check("OpenAI : voix reçue", (ow.parse("{\"type\":\"response.output_audio.delta\",\"delta\":\"AAA=\"}").single() as LiveEvent.Audio).b64 == "AAA=")
+    check("OpenAI : texte de la voix de SENTIA", (ow.parse("{\"type\":\"response.output_audio_transcript.delta\",\"delta\":\"Bon\"}").single() as LiveEvent.OutputText).text == "Bon")
+    val it2 = ow.parse("{\"type\":\"conversation.item.input_audio_transcription.completed\",\"transcript\":\"Stop\"}").single() as LiveEvent.InputText
+    check("OpenAI : phrase de la personne, entière", it2.text == "Stop" && it2.complete)
+    check("OpenAI : la personne reprend la parole = interruption", ow.parse("{\"type\":\"input_audio_buffer.speech_started\"}").single() is LiveEvent.Interrupted)
+    val fc = ow.parse("{\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"name\":\"capture_camera\",\"call_id\":\"call_7\",\"arguments\":\"{\\\"purpose\\\":\\\"money\\\"}\"}}").single() as LiveEvent.ToolCall
+    check("OpenAI : appel d'outil avec ses arguments", fc.calls.single().id == "call_7" && fc.calls.single().name == "capture_camera" && fc.calls.single().args["purpose"] == "money")
+    check("OpenAI : un message d'assistant n'est pas un appel d'outil", ow.parse("{\"type\":\"response.output_item.done\",\"item\":{\"type\":\"message\"}}").isEmpty())
+    check("OpenAI : réponse terminée = fin du tour", ow.parse("{\"type\":\"response.done\",\"response\":{\"output\":[{\"type\":\"message\"}]}}").single() is LiveEvent.TurnComplete)
+    check("OpenAI : réponse qui ne fait qu'appeler un outil = PAS la fin du tour (une seule photo par demande)", ow.parse("{\"type\":\"response.done\",\"response\":{\"output\":[{\"type\":\"function_call\",\"name\":\"capture_camera\"}]}}").isEmpty())
+    check("OpenAI : erreur du serveur", (ow.parse("{\"type\":\"error\",\"error\":{\"message\":\"bad key\"}}").single() as LiveEvent.Failure).message == "bad key")
+    check("OpenAI : message inconnu ignoré, message illisible = échec propre", ow.parse("{\"type\":\"rate_limits.updated\"}").isEmpty() && ow.parse("pas du json").single() is LiveEvent.Failure)
+    check("choix du fournisseur : OpenAI par défaut, Gemini sur demande", LiveWire.forProvider("openai") === OpenAiWire && LiveWire.forProvider("") === OpenAiWire && LiveWire.forProvider("gemini") === GeminiWire)
+    check("Gemini : jeton dans l'adresse, encodé ; micro 16 kHz", GeminiWire.url("wss://g/ws?x=1", "auth_tokens/a b").endsWith("&access_token=auth_tokens%2Fa+b") && GeminiWire.sampleRateIn == 16_000 && GeminiWire.headers("t").isEmpty())
+    check("Gemini : photo puis résultat d'outil", GeminiWire.photoResult("c", "capture_camera", "QQ==", "ok").size == 2)
+
     println("\n== Conversation en direct (règles)")
     val gate = LivePhotoGate()
     check("une seule photo par demande, de nouveau possible au tour suivant", gate.tryTake() && !gate.tryTake() && !gate.tryTake().also { gate.turnEnded() } && gate.tryTake())

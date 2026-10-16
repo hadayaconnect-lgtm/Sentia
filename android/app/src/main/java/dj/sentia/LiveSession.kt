@@ -6,7 +6,8 @@ import dj.sentia.core.LiveEnd
 import dj.sentia.core.LiveEvent
 import dj.sentia.core.IdleWatch
 import dj.sentia.core.LivePhotoGate
-import dj.sentia.core.LiveProtocol
+import dj.sentia.core.GeminiWire
+import dj.sentia.core.LiveWire
 import dj.sentia.core.LiveReconnect
 import dj.sentia.core.SpokenText
 import dj.sentia.core.VoiceCommand
@@ -30,7 +31,7 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 /**
- * Conversation vocale en direct avec Gemini Live : le micro part en continu, la voix revient en continu, on peut couper la parole.
+ * Conversation vocale en direct (OpenAI Realtime ou Gemini Live, au choix du serveur) : le micro part en continu, la voix revient en continu, on peut couper la parole.
  * La photo reste ponctuelle : l'IA appelle l'outil « capture_camera » (UNE photo par demande), jamais de vidéo continue.
  * La clé secrète n'est jamais ici : le téléphone reçoit un jeton temporaire du serveur SENTIA.
  */
@@ -77,6 +78,8 @@ class LiveSession(
     @Volatile private var ws: WebSocket? = null
     private var gen = 0
     private var info: LiveToken? = null
+    /** Langage du fournisseur (OpenAI ou Gemini), choisi par le serveur dans la réponse du jeton. */
+    private var wire: LiveWire = GeminiWire
     private var resumeHandle: String? = null
 
     @Volatile private var ready = false
@@ -109,7 +112,7 @@ class LiveSession(
     fun sendText(text: String) {
         if (!ready) return
         idle.activity(System.currentTimeMillis())
-        ws?.send(LiveProtocol.text(text))
+        wire.text(text).forEach { ws?.send(it) }
     }
 
     fun end() { events.trySend(Ws.Stop(End.USER)) }
@@ -125,6 +128,7 @@ class LiveSession(
         ui.onState(State.CONNECTING)
         try {
             info = fetchToken()
+            wire = LiveWire.forProvider(info!!.provider)
             route.open()
             if (!player.start()) throw AgentException(AgentException.Kind.SERVER, "haut-parleur indisponible")
             val err = connect(info!!, null)
@@ -133,15 +137,15 @@ class LiveSession(
                 throw AgentException(AgentException.Kind.SERVER, err)
             }
             connectMs = System.currentTimeMillis() - startedAt
-            val m = LiveMic { chunk ->
+            val m = LiveMic(wire.sampleRateIn) { chunk ->
                 // Sans annulation d'écho, on n'envoie pas le micro pendant que SENTIA parle (sinon elle s'écoute elle-même).
-                if (ready && !(mic?.hasEchoCancel == false && player.speaking)) ws?.send(LiveProtocol.audio(Base64.encodeToString(chunk, Base64.NO_WRAP)))
+                if (ready && !(mic?.hasEchoCancel == false && player.speaking)) ws?.send(wire.audio(Base64.encodeToString(chunk, Base64.NO_WRAP)))
             }
             mic = m
             if (!m.start()) throw AgentException(AgentException.Kind.SERVER, "micro indisponible")
             idle.activity(System.currentTimeMillis())
             setState(State.LISTENING)
-            if (opening != null) ws?.send(LiveProtocol.text(opening))
+            if (opening != null) wire.text(opening).forEach { ws?.send(it) }
 
             // Surveillance : fin de parole → écoute ; veille après un long silence.
             val ticker = launch {
@@ -157,7 +161,7 @@ class LiveSession(
                     when (val ev = events.receive()) {
                         is Ws.Stop -> { result = ev.reason; break@loop }
                         is Ws.Opened -> {}
-                        is Ws.Message -> if (ev.gen == gen) for (e in LiveProtocol.parse(ev.text)) handle(e, this)
+                        is Ws.Message -> if (ev.gen == gen) for (e in wire.parse(ev.text)) handle(e, this)
                         is Ws.Closed -> if (ev.gen == gen) {
                             if (goodbye) { result = End.USER; break@loop }
                             ready = false
@@ -187,10 +191,10 @@ class LiveSession(
     private suspend fun connect(t: LiveToken, handle: String?): String? {
         var last = "aucune adresse"
         for (u in t.urls) {
-            val url = ("https:" + u.removePrefix("wss:").removePrefix("ws:")).toHttpUrlOrNull()?.newBuilder()?.addQueryParameter("access_token", t.token)?.build() ?: continue
+            val url = ("https:" + wire.url(u, t.token).removePrefix("wss:").removePrefix("ws:")).toHttpUrlOrNull() ?: continue
             val g = ++gen
             ws?.cancel()
-            val socket = http.newWebSocket(Request.Builder().url(url).build(), object : WebSocketListener() {
+            val socket = http.newWebSocket(Request.Builder().url(url).apply { wire.headers(t.token).forEach { (k, v) -> header(k, v) } }.build(), object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) { events.trySend(Ws.Opened(g)) }
                 override fun onMessage(webSocket: WebSocket, text: String) { events.trySend(Ws.Message(g, text)) }
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) { events.trySend(Ws.Message(g, bytes.utf8())) }
@@ -217,10 +221,10 @@ class LiveSession(
             while (true) {
                 when (val ev = events.receive()) {
                     is Ws.Stop -> { pendingStop = ev.reason; return@withTimeoutOrNull "arrêt" }
-                    is Ws.Opened -> if (ev.gen == g && !sentSetup) { sentSetup = true; socket.send(LiveProtocol.setup(t.model, t.instruction, t.toolsJson, handle)) }
+                    is Ws.Opened -> if (ev.gen == g && !sentSetup) { sentSetup = true; wire.open(t.model, t.instruction, t.toolsJson, t.voice, handle).forEach { socket.send(it) } }
                     is Ws.Closed -> if (ev.gen == g) return@withTimeoutOrNull ev.detail
                     is Ws.Message -> if (ev.gen == g) {
-                        val parsed = LiveProtocol.parse(ev.text)
+                        val parsed = wire.parse(ev.text)
                         if (parsed.any { it is LiveEvent.SetupComplete }) { ready = true; return@withTimeoutOrNull null }
                         parsed.filterIsInstance<LiveEvent.Failure>().firstOrNull()?.let { return@withTimeoutOrNull it.message }
                     }
@@ -237,7 +241,9 @@ class LiveSession(
         for (attempt in 1..LiveReconnect.MAX_ATTEMPTS) {
             if (pendingStop != null) return false
             delay(LiveReconnect.delayMs(attempt))
-            if (attempt >= 2) info = try { fetchToken() } catch (_: AgentException) { continue }
+            // Un jeton ne sert qu'une fois (et expire) : chaque reconnexion en demande un nouveau.
+            info = try { fetchToken() } catch (_: AgentException) { continue }
+            wire = LiveWire.forProvider(info!!.provider)
             if (connect(info ?: continue, resumeHandle) == null) { state = State.LISTENING; ui.onState(state); return true }
         }
         return false
@@ -274,6 +280,7 @@ class LiveSession(
             is LiveEvent.TurnComplete -> { dropAudio = false; modelTurnOpen = false; gate.turnEnded(); spoken.reset(); caption.setLength(0); photoSentAt = 0L }
             is LiveEvent.InputText -> {
                 idle.activity(now)
+                if (e.complete) spoken.reset()
                 val said = spoken.add(e.text)
                 if (VoiceCommands.parse(said) == VoiceCommand.STOP) interruptSpeech()
                 if (LiveEnd.isGoodbye(said)) { goodbye = true; scope.launch { delay(GOODBYE_GRACE_MS); events.trySend(Ws.Stop(End.USER)) } }
@@ -295,7 +302,7 @@ class LiveSession(
         when (c.name) {
             "capture_camera" -> {
                 if (!gate.tryTake()) {
-                    ws?.send(LiveProtocol.toolResponse(c.id, c.name, "Une photo a déjà été prise pour cette demande. Utilise-la. Si elle est inexploitable, demande à la personne de bouger le téléphone puis de redemander.", true))
+                    wire.toolResult(c.id, c.name, "Une photo a déjà été prise pour cette demande. Utilise-la. Si elle est inexploitable, demande à la personne de bouger le téléphone puis de redemander.", true).forEach { ws?.send(it) }
                     return
                 }
                 setState(State.LOOKING)
@@ -303,27 +310,26 @@ class LiveSession(
                 val b64 = try {
                     ui.capturePhoto()
                 } catch (e: AgentException) {
-                    ws?.send(LiveProtocol.toolResponse(c.id, c.name, "Je n'arrive pas à obtenir une image claire. Dis exactement à la personne : « Je n'arrive pas à obtenir une image claire. Veuillez orienter le téléphone et réessayer. »", true))
+                    wire.toolResult(c.id, c.name, "Je n'arrive pas à obtenir une image claire. Dis exactement à la personne : « Je n'arrive pas à obtenir une image claire. Veuillez orienter le téléphone et réessayer. »", true).forEach { ws?.send(it) }
                     setState(State.LISTENING)
                     return
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    ws?.send(LiveProtocol.toolResponse(c.id, c.name, "La caméra est indisponible.", true))
+                    wire.toolResult(c.id, c.name, "La caméra est indisponible.", true).forEach { ws?.send(it) }
                     setState(State.LISTENING)
                     return
                 }
                 photoSentAt = System.currentTimeMillis()
                 cameraMs = photoSentAt - photoAskedAt
                 firstVoiceMs = -1L
-                ws?.send(LiveProtocol.photo(b64))
-                ws?.send(LiveProtocol.toolResponse(c.id, c.name, "Photo reçue. Décris uniquement ce qui y est réellement visible, brièvement."))
+                wire.photoResult(c.id, c.name, b64, "Photo reçue. Décris uniquement ce qui y est réellement visible, brièvement, en trois phrases au maximum.").forEach { ws?.send(it) }
             }
             "get_time" -> {
                 val t = OffsetDateTime.now().withNano(0).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                ws?.send(LiveProtocol.toolResponse(c.id, c.name, t))
+                wire.toolResult(c.id, c.name, t).forEach { ws?.send(it) }
             }
-            else -> ws?.send(LiveProtocol.toolResponse(c.id, c.name, "Outil indisponible.", true))
+            else -> wire.toolResult(c.id, c.name, "Outil indisponible.", true).forEach { ws?.send(it) }
         }
     }
 
