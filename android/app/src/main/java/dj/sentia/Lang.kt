@@ -115,6 +115,14 @@ object Lang {
         else -> "Si aucun billet n'est clairement visible, dis : « Je ne vois pas de billet suffisamment clairement. »"
     }
 
+    /** Ouverture de la conversation en direct sans photo : SENTIA confirme seulement qu'elle écoute. */
+    fun liveReadyPrompt(lang: String): String = when (lang) {
+        "en" -> "Say only « I'm listening. » then wait for me. Do not take any photo until I ask."
+        "so" -> "Dheh kaliya « Waan dhegeysanayaa. » kadibna sug. Sawir ha qaadin ilaa aan weydiiyo."
+        "ar" -> "قل فقط « أنا أستمع. » ثم انتظرني. لا تلتقط أي صورة حتى أطلب منك."
+        else -> "Dis seulement « Je vous écoute. » puis attends-moi. Ne prends aucune photo tant que je ne te le demande pas."
+    }
+
     fun cameraPrompt(lang: String): String = cameraPromptBase(lang) + " " + grounded(lang)
     fun lookAgainPrompt(lang: String): String = lookAgainPromptBase(lang) + " " + grounded(lang)
     fun readTextPrompt(lang: String): String = readTextPromptBase(lang) + " " + grounded(lang)

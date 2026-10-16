@@ -330,7 +330,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         // Réveil / ouverture de l'application en mode direct : connexion, puis SENTIA regarde (UNE photo) et décrit.
         if (liveWanted()) {
             status.text = getString(R.string.live_connecting)
-            launchNew { startLive(autoLook = true) }
+            launchNew { startLive(autoLook = false) } // le réveil ne prend plus de photo tout seul : la personne demande quand elle veut
             return
         }
 
@@ -475,7 +475,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         })
         live = session
         try {
-            val end = session.run(if (autoLook) Lang.cameraPrompt(lang) else null)
+            val end = session.run(if (autoLook) Lang.cameraPrompt(lang) else Lang.liveReadyPrompt(lang))
             status.text = ""
             orb.mode = OrbView.Mode.IDLE
             when (end) {
