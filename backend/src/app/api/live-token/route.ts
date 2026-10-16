@@ -17,5 +17,12 @@ export const POST = handle(async (request) => {
   const lang = body.language === "auto" || body.language === undefined ? null : parseLang(body.language);
   const profile: Profile = (PROFILES as unknown[]).includes(body.profile) ? (body.profile as Profile) : "other";
   const localTime = cleanText(body.localTime, 40) || undefined;
-  return jsonResponse(await createLiveSession({ lang, profile, localTime }));
+  try {
+    return jsonResponse(await createLiveSession({ lang, profile, localTime }));
+  } catch (error) {
+    // Détail court (sans clé) pour que le diagnostic de l'appli dise POURQUOI le direct est indisponible.
+    const detail = (error instanceof Error ? error.message : String(error)).replace(/[A-Za-z0-9_\-.]{28,}/g, "…").slice(0, 200);
+    console.error("live_token", detail);
+    return jsonResponse({ error: "live_token", detail }, 502);
+  }
 });
