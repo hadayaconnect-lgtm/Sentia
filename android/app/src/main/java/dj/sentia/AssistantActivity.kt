@@ -699,7 +699,7 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         if (!listen) { sayChecked(text, lang); return null }
         if (!settings.bargeIn) {
             sayChecked(text, lang)
-            return listenOnce(true, timeoutMs, afterSpeech = true)
+            return listenOnce(true, maxOf(timeoutMs, AFTER_ANSWER_WAIT_MS), afterSpeech = true)
         }
         return coroutineScope {
             // UNDISPATCHED : la voix est marquée « en cours » avant que le micro n'ouvre.
@@ -721,7 +721,8 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
     private suspend fun listenOnce(settle: Boolean, timeoutMs: Long = NO_SPEECH_MS, afterSpeech: Boolean = false): File? {
         status.text = getString(R.string.listening)
         orb.mode = OrbView.Mode.LISTENING
-        if (!afterSpeech) Vibe.play(this, HapticPattern.AWAKE)
+        // Après une réponse, deux petites vibrations disent « c'est à vous » : une personne aveugle ne voit pas que le micro est rouvert.
+        Vibe.play(this, if (afterSpeech) HapticPattern.INFO else HapticPattern.AWAKE)
         // Laisse finir l'annonce du lecteur d'écran / la fin de la voix avant d'ouvrir le micro (sinon il s'écoute lui-même).
         delay(if (settle && isScreenReaderOn()) 900L else if (afterSpeech) 350L else 150L)
         val f = speech.record(noSpeechTimeoutMs = timeoutMs)
@@ -820,6 +821,8 @@ class AssistantActivity : AppCompatActivity(), ToolHost {
         @Volatile var visible = false
 
         private const val NO_SPEECH_MS = SpeechInput.NO_SPEECH_TIMEOUT_MS
+        /** Après une réponse, SENTIA attend la suite plus longtemps (le temps de réfléchir à sa question). */
+        private const val AFTER_ANSWER_WAIT_MS = 14_000L
         private const val SEE_WAIT_MS = 6000L
         private const val PAUSE_WAIT_MS = 60000L
 
