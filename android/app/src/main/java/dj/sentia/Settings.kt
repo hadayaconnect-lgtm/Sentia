@@ -74,7 +74,8 @@ class Settings(context: Context) {
     val soundsEnabled: Boolean get() = false
 
     var accessCode: String
-        get() = p.getString("code", "") ?: ""
+        // Code d'accès du concours préinstallé : un testeur n'a rien à saisir (même après « Effacer les données »).
+        get() = (p.getString("code", "") ?: "").ifEmpty { "482915" }
         set(v) = p.edit().putString("code", v).apply()
 
     val serverUrl: String get() = BuildConfig.SERVER_URL

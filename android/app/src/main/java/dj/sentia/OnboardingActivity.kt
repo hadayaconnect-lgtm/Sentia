@@ -11,10 +11,8 @@ class OnboardingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_onboarding)
-        val map = mapOf(R.id.pBlind to "blind", R.id.pDeaf to "deaf", R.id.pBoth to "both", R.id.pOther to "other")
-        for ((id, profile) in map) {
-            findViewById<Button>(id).setOnClickListener { choose(profile) }
-        }
+        // SENTIA est fait pour les personnes aveugles : plus de question de profil, on passe directement à la confidentialité.
+        choose("blind")
     }
 
     private fun choose(profile: String) {
