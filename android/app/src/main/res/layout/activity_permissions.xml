@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/black" android:fillViewport="true">
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="20dp">
+        <TextView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/pg_title" android:textColor="@color/yellow"
+            android:textSize="30sp" android:textStyle="bold" android:accessibilityHeading="true" />
+        <TextView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:layout_marginBottom="8dp"
+            android:text="@string/pg_intro" android:textColor="@color/white" android:textSize="20sp" />
+        <TextView android:id="@+id/pgMicText"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:textColor="@color/white"
+            android:textSize="22sp" android:textStyle="bold" />
+        <Button android:id="@+id/pgMicBtn" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:text="@string/pg_btn" android:textSize="18sp" />
+        <TextView android:id="@+id/pgCamText"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:textColor="@color/white"
+            android:textSize="22sp" android:textStyle="bold" />
+        <Button android:id="@+id/pgCamBtn" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:text="@string/pg_btn" android:textSize="18sp" />
+        <TextView android:id="@+id/pgNotifText"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:textColor="@color/white"
+            android:textSize="22sp" android:textStyle="bold" />
+        <Button android:id="@+id/pgNotifBtn" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:text="@string/pg_btn" android:textSize="18sp" />
+        <TextView android:id="@+id/pgA11yText"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:textColor="@color/white"
+            android:textSize="22sp" android:textStyle="bold" />
+        <Button android:id="@+id/pgA11yBtn" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:text="@string/pg_btn" android:textSize="18sp" />
+        <TextView android:id="@+id/pgOverlayText"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:textColor="@color/white"
+            android:textSize="22sp" android:textStyle="bold" />
+        <Button android:id="@+id/pgOverlayBtn" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:text="@string/pg_btn" android:textSize="18sp" />
+        <TextView android:id="@+id/pgBatteryText"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:textColor="@color/white"
+            android:textSize="22sp" android:textStyle="bold" />
+        <Button android:id="@+id/pgBatteryBtn" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:text="@string/pg_btn" android:textSize="18sp" />
+        <TextView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="24dp" android:text="@string/pg_hint"
+            android:textColor="@color/white" android:textSize="18sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="32dp" android:text="@string/pb_title" android:textColor="@color/yellow"
+            android:textSize="26sp" android:textStyle="bold" android:accessibilityHeading="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="@string/pb_all_t" android:textColor="@color/white"
+            android:textSize="22sp" android:textStyle="bold" android:accessibilityHeading="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:text="@string/pb_all" android:textColor="@color/white" android:textSize="18sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="@string/pb_xi_t" android:textColor="@color/white"
+            android:textSize="22sp" android:textStyle="bold" android:accessibilityHeading="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:text="@string/pb_xi" android:textColor="@color/white" android:textSize="18sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="@string/pb_sa_t" android:textColor="@color/white"
+            android:textSize="22sp" android:textStyle="bold" android:accessibilityHeading="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:text="@string/pb_sa" android:textColor="@color/white" android:textSize="18sp" />
+        <Button android:id="@+id/pgDone" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="24dp" android:text="@string/pg_done" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pg_title">Ogolaanshaha SENTIA</string>
+    <string name="pg_intro">Sadar kasta oo la calaamadeeyay in la oggolaado, taabo badhanka oo aqbal. Halkan ku soo noqo kadib: sadarku wuu cusboonaysiin.</string>
+    <string name="pg_mic">Makarafoon</string>
+    <string name="pg_cam">Kamarad</string>
+    <string name="pg_notif">Ogeysiisyo</string>
+    <string name="pg_a11y">Badhamada codka (helitaan)</string>
+    <string name="pg_overlay">Muuji kaga sarreeya abaabulada kale</string>
+    <string name="pg_battery">Batari aan xaddidnayn</string>
+    <string name="pg_ok">la oggolaaday</string>
+    <string name="pg_todo">in la oggolaado</string>
+    <string name="pg_btn">Oggolow</string>
+    <string name="pg_hint">Haddii taleefanku diido helitaanka: fur macluumaadka app-ka SENTIA, taabo saddexda dhibcood ee midig sare, dooro Oggolow goobaha xaddidan, kadibna mar kale isku day.</string>
+    <string name="pg_done">Dhammaad</string>
+    <string name="pb_title">Sida taleefankaaga u eg yahay</string>
+    <string name="pb_all_t">Dhammaan taleefannada</string>
+    <string name="pb_all">1. Shid adeegga helitaanka SENTIA. Haddii la diido: macluumaadka app-ka, saddex dhibcood, Oggolow goobaha xaddidan.\n2. Haddii Codka kor saddex jeer uusan shaqayn: dami oo mar kale shid adeegga helitaanka.</string>
+    <string name="pb_xi_t">Redmi / Xiaomi (HyperOS)</string>
+    <string name="pb_xi">1. Goobaha, Abbaarayaasha, SENTIA, Badbaadiyaha batariga: dooro Xaddid la’aan.\n2. Goobaha, Abbaarayaasha, Ogolaanshaha, Bilow toos ah: shid SENTIA.\n3. Abbaarayaasha dhawaan: ku sii hay SENTIA, kadibna taabo quful.</string>
+    <string name="pb_sa_t">Samsung (One UI)</string>
+    <string name="pb_sa">1. Goobaha, Abbaarayaasha, SENTIA, Batari: dooro Xaddid la’aan.\n2. Goobaha, Batari, Xadka isticmaalka gadaasha: dami Seexi abbaarayaasha aan la isticmaalin, kadibna ku dar SENTIA Abbaarayaasha aan weligood seexan.\n3. Abbaarayaasha dhawaan: taabo astaanta SENTIA, kadibna Furan ku hay.\n4. Helitaanka: Goobaha, Helitaanka, Abbaarayaasha la rakibay, SENTIA.</string>
+</resources>

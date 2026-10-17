@@ -4,11 +4,20 @@
     <string name="su_perm_msg">Marka hore waxaan ku weydiin doonaa saddex ogolaansho: makarafoonka, kamarada iyo ogeysiisyada. Daaqad kasta, dooro Oggolow.</string>
     <string name="su_perm_btn">Weydii ogolaanshaha</string>
     <string name="su_a11y_title">Toosinta badhamada codka</string>
-    <string name="su_a11y_msg">Tallaabadii ugu dambaysay. Taabo badhanka hoose. Liiska ka raadi SENTIA badhamada codka, shid oo xaqiiji. Haddii taleefanku diido, fur macluumaadka app-ka SENTIA, taabo saddexda dhibcood ee midig sare, dooro Oggolow goobaha xaddidan, kadibna mar kale isku day. Markaas halkan ku soo noqo.</string>
+    <string name="su_a11y_msg">Tallaabada xigta. Taabo badhanka hoose. Liiska ka raadi SENTIA badhamada codka, shid oo xaqiiji. Haddii taleefanku diido, fur macluumaadka app-ka SENTIA, taabo saddexda dhibcood ee midig sare, dooro Oggolow goobaha xaddidan, kadibna mar kale isku day. Markaas halkan ku soo noqo.</string>
     <string name="su_a11y_btn">Fur goobaha helitaanka</string>
     <string name="su_a11y_retry">Wali lama shidin. Taabo badhanka, raadi SENTIA badhamada codka, oo shid. Ama dooro Dabadeed.</string>
     <string name="su_later">Dabadeed</string>
     <string name="su_ready_title">Waa diyaar</string>
     <string name="su_ready_msg">Waa diyaar. Si aad ii dejiso, saddex jeer si degdeg ah u riix Codka kor, ama gilgil taleefanka.</string>
     <string name="su_ready_btn">Bilow</string>
+    <string name="su_overlay_title">Furitaan toos ah</string>
+    <string name="su_overlay_msg">Tallaabada xigta. Taabo badhanka hoose. Liiska ka taabo SENTIA, kadibna shid Muuji kaga sarreeya abaabulada kale. Tani waxay u ogolaataa SENTIA inay is furto marka aad toosiso. Markaas halkan ku soo noqo.</string>
+    <string name="su_overlay_btn">Fur goobtan</string>
+    <string name="su_overlay_retry">Wali lama shidin. Taabo badhanka, taabo SENTIA oo shid furaha. Ama dooro Dabadeed.</string>
+    <string name="su_battery_title">U joog firfircoon</string>
+    <string name="su_battery_msg">Tallaabadii ugu dambaysay. Taabo badhanka, kadibna dooro Oggolow. Tani waxay ka hortagtaa in taleefanku SENTIA seexiyo. Markaas halkan ku soo noqo.</string>
+    <string name="su_battery_btn">U ogolow SENTIA inay firfircoonaato</string>
+    <string name="su_battery_retry">Wali lama oggolaan. Taabo badhanka, kadibna dooro Oggolow. Ama dooro Dabadeed.</string>
+    <string name="su_open_btn">Eeg oo deji ogolaanshaha</string>
 </resources>

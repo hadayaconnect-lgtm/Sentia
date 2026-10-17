@@ -4,11 +4,20 @@
     <string name="su_perm_msg">First I will ask for three permissions: microphone, camera and notifications. For each window, choose Allow.</string>
     <string name="su_perm_btn">Ask for permissions</string>
     <string name="su_a11y_title">Wake with the volume keys</string>
-    <string name="su_a11y_msg">Last step. Press the button at the bottom of the screen. In the list, find SENTIA volume keys, turn it on and confirm. If the phone refuses, open the SENTIA app info, tap the three dots at the top right, choose Allow restricted settings, then try again. Then come back here.</string>
+    <string name="su_a11y_msg">Next step. Press the button at the bottom of the screen. In the list, find SENTIA volume keys, turn it on and confirm. If the phone refuses, open the SENTIA app info, tap the three dots at the top right, choose Allow restricted settings, then try again. Then come back here.</string>
     <string name="su_a11y_btn">Open accessibility settings</string>
     <string name="su_a11y_retry">It is not turned on yet. Press the button, find SENTIA volume keys, and turn it on. Or choose Later.</string>
     <string name="su_later">Later</string>
     <string name="su_ready_title">All set</string>
     <string name="su_ready_msg">All set. To wake me, press Volume up quickly three times, or shake the phone.</string>
     <string name="su_ready_btn">Start</string>
+    <string name="su_overlay_title">Automatic opening</string>
+    <string name="su_overlay_msg">Next step. Press the button at the bottom. In the list, touch SENTIA, then turn on Display over other apps. This lets SENTIA open when you wake it. Then come back here.</string>
+    <string name="su_overlay_btn">Open this setting</string>
+    <string name="su_overlay_retry">It is not turned on yet. Press the button, touch SENTIA and turn on the switch. Or choose Later.</string>
+    <string name="su_battery_title">Stay active</string>
+    <string name="su_battery_msg">Last step. Press the button, then choose Allow. This stops the phone from putting SENTIA to sleep. Then come back here.</string>
+    <string name="su_battery_btn">Allow SENTIA to stay active</string>
+    <string name="su_battery_retry">It is not allowed yet. Press the button, then choose Allow. Or choose Later.</string>
+    <string name="su_open_btn">View and set permissions</string>
 </resources>

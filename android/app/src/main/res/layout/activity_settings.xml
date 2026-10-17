@@ -35,6 +35,9 @@
         <Button android:id="@+id/btnA11y" style="@style/Sentia.BigButton"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:text="@string/set_accessibility" android:textSize="18sp" />
+        <Button android:id="@+id/btnSetup" style="@style/Sentia.BigButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp" android:text="@string/su_open_btn" android:textSize="18sp" />
         <Button android:id="@+id/btnProfile" style="@style/Sentia.BigButton"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:text="@string/set_change_profile" android:textSize="18sp" />

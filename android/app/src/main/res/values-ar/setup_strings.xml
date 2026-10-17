@@ -4,11 +4,20 @@
     <string name="su_perm_msg">سأطلب أولاً ثلاثة أذونات: الميكروفون والكاميرا والإشعارات. في كل نافذة اختر السماح.</string>
     <string name="su_perm_btn">طلب الأذونات</string>
     <string name="su_a11y_title">التنبيه بأزرار الصوت</string>
-    <string name="su_a11y_msg">الخطوة الأخيرة. اضغط الزر في أسفل الشاشة. في القائمة ابحث عن SENTIA أزرار الصوت، فعّله ووافق. إذا رفض الهاتف، افتح معلومات تطبيق SENTIA، اضغط النقاط الثلاث أعلى اليمين، اختر السماح بالإعدادات المقيّدة، ثم أعد المحاولة. بعدها ارجع إلى هنا.</string>
+    <string name="su_a11y_msg">الخطوة التالية. اضغط الزر في أسفل الشاشة. في القائمة ابحث عن SENTIA أزرار الصوت، فعّله ووافق. إذا رفض الهاتف، افتح معلومات تطبيق SENTIA، اضغط النقاط الثلاث أعلى اليمين، اختر السماح بالإعدادات المقيّدة، ثم أعد المحاولة. بعدها ارجع إلى هنا.</string>
     <string name="su_a11y_btn">فتح إعدادات إمكانية الوصول</string>
     <string name="su_a11y_retry">لم يتم التفعيل بعد. اضغط الزر، وابحث عن SENTIA أزرار الصوت، وفعّله. أو اختر لاحقاً.</string>
     <string name="su_later">لاحقاً</string>
     <string name="su_ready_title">كل شيء جاهز</string>
     <string name="su_ready_msg">كل شيء جاهز. لإيقاظي اضغط على رفع الصوت ثلاث مرات بسرعة، أو هز الهاتف.</string>
     <string name="su_ready_btn">ابدأ</string>
+    <string name="su_overlay_title">الفتح التلقائي</string>
+    <string name="su_overlay_msg">الخطوة التالية. اضغط الزر في الأسفل. في القائمة المس SENTIA ثم فعّل العرض فوق التطبيقات الأخرى. هذا يسمح لـ SENTIA بالفتح عندما توقظها. بعدها ارجع إلى هنا.</string>
+    <string name="su_overlay_btn">فتح هذا الإعداد</string>
+    <string name="su_overlay_retry">لم يتم التفعيل بعد. اضغط الزر، المس SENTIA وفعّل المفتاح. أو اختر لاحقاً.</string>
+    <string name="su_battery_title">البقاء نشطاً</string>
+    <string name="su_battery_msg">الخطوة الأخيرة. اضغط الزر ثم اختر السماح. هذا يمنع الهاتف من إيقاف SENTIA. بعدها ارجع إلى هنا.</string>
+    <string name="su_battery_btn">السماح لـ SENTIA بالبقاء نشطة</string>
+    <string name="su_battery_retry">لم يتم السماح بعد. اضغط الزر ثم اختر السماح. أو اختر لاحقاً.</string>
+    <string name="su_open_btn">عرض الأذونات وضبطها</string>
 </resources>

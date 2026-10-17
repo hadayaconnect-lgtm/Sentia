@@ -56,6 +56,7 @@ class SettingsActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnAppPerms).setOnClickListener { openAppPermissions() }
         findViewById<Button>(R.id.btnA11y).setOnClickListener { startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        findViewById<Button>(R.id.btnSetup).setOnClickListener { startActivity(Intent(this, PermissionsActivity::class.java)) }
         findViewById<Button>(R.id.btnProfile).setOnClickListener {
             settings.profile = "" // relance l'écran d'accueil (choix du mode)
             startActivity(Intent(this, OnboardingActivity::class.java))

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pg_title">Autorisations de SENTIA</string>
+    <string name="pg_intro">Pour chaque ligne marquée à autoriser, touchez le bouton et acceptez. Revenez ici ensuite : la ligne se met à jour.</string>
+    <string name="pg_mic">Micro</string>
+    <string name="pg_cam">Caméra</string>
+    <string name="pg_notif">Notifications</string>
+    <string name="pg_a11y">Touches de volume (accessibilité)</string>
+    <string name="pg_overlay">Affichage par-dessus les autres applications</string>
+    <string name="pg_battery">Batterie sans restriction</string>
+    <string name="pg_ok">autorisé</string>
+    <string name="pg_todo">à autoriser</string>
+    <string name="pg_btn">Autoriser</string>
+    <string name="pg_hint">Si le téléphone refuse l\'accessibilité : ouvrez les informations de l\'application SENTIA, touchez les trois points en haut à droite, choisissez Autoriser les paramètres restreints, puis recommencez.</string>
+    <string name="pg_done">Terminé</string>
+    <string name="pb_title">Selon votre téléphone</string>
+    <string name="pb_all_t">Tous les téléphones</string>
+    <string name="pb_all">1. Activez le service d\'accessibilité SENTIA. S\'il est refusé : infos de l\'application, trois points, Autoriser les paramètres restreints.\n2. Si Volume plus trois fois ne marche plus : désactivez puis réactivez le service d\'accessibilité.</string>
+    <string name="pb_xi_t">Redmi / Xiaomi (HyperOS)</string>
+    <string name="pb_xi">1. Réglages, Applications, SENTIA, Économiseur de batterie : choisissez Aucune restriction.\n2. Réglages, Applications, Autorisations, Démarrage automatique : activez SENTIA.\n3. Applications récentes (le carré) : restez appuyé sur SENTIA, puis touchez le cadenas.</string>
+    <string name="pb_sa_t">Samsung (One UI)</string>
+    <string name="pb_sa">1. Réglages, Applications, SENTIA, Batterie : choisissez Sans restriction.\n2. Réglages, Batterie, Limites d\'utilisation en arrière-plan : désactivez Mettre en veille les applis inutilisées, puis ajoutez SENTIA à Applications jamais en veille.\n3. Applications récentes : touchez l\'icône de SENTIA, puis Garder ouverte.\n4. Accessibilité : Réglages, Accessibilité, Applications installées, SENTIA.</string>
+</resources>

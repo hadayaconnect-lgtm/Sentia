@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pg_title">SENTIA permissions</string>
+    <string name="pg_intro">For each line marked to allow, touch the button and accept. Come back here afterwards: the line updates.</string>
+    <string name="pg_mic">Microphone</string>
+    <string name="pg_cam">Camera</string>
+    <string name="pg_notif">Notifications</string>
+    <string name="pg_a11y">Volume keys (accessibility)</string>
+    <string name="pg_overlay">Display over other apps</string>
+    <string name="pg_battery">Unrestricted battery</string>
+    <string name="pg_ok">allowed</string>
+    <string name="pg_todo">to allow</string>
+    <string name="pg_btn">Allow</string>
+    <string name="pg_hint">If the phone refuses accessibility: open the SENTIA app info, tap the three dots at the top right, choose Allow restricted settings, then try again.</string>
+    <string name="pg_done">Done</string>
+    <string name="pb_title">Depending on your phone</string>
+    <string name="pb_all_t">All phones</string>
+    <string name="pb_all">1. Turn on the SENTIA accessibility service. If refused: app info, three dots, Allow restricted settings.\n2. If Volume up three times stops working: turn the accessibility service off and on again.</string>
+    <string name="pb_xi_t">Redmi / Xiaomi (HyperOS)</string>
+    <string name="pb_xi">1. Settings, Apps, SENTIA, Battery saver: choose No restrictions.\n2. Settings, Apps, Permissions, Autostart: turn on SENTIA.\n3. Recent apps (the square): press and hold SENTIA, then touch the lock.</string>
+    <string name="pb_sa_t">Samsung (One UI)</string>
+    <string name="pb_sa">1. Settings, Apps, SENTIA, Battery: choose Unrestricted.\n2. Settings, Battery, Background usage limits: turn off Put unused apps to sleep, then add SENTIA to Never sleeping apps.\n3. Recent apps: touch the SENTIA icon, then Keep open.\n4. Accessibility: Settings, Accessibility, Installed apps, SENTIA.</string>
+</resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pg_title">أذونات SENTIA</string>
+    <string name="pg_intro">لكل سطر مكتوب أنه يجب السماح به، المس الزر ووافق. ارجع إلى هنا بعدها: يتحدث السطر.</string>
+    <string name="pg_mic">الميكروفون</string>
+    <string name="pg_cam">الكاميرا</string>
+    <string name="pg_notif">الإشعارات</string>
+    <string name="pg_a11y">أزرار الصوت (إمكانية الوصول)</string>
+    <string name="pg_overlay">العرض فوق التطبيقات الأخرى</string>
+    <string name="pg_battery">البطارية دون قيود</string>
+    <string name="pg_ok">مسموح</string>
+    <string name="pg_todo">يجب السماح</string>
+    <string name="pg_btn">السماح</string>
+    <string name="pg_hint">إذا رفض الهاتف إمكانية الوصول: افتح معلومات تطبيق SENTIA، اضغط النقاط الثلاث أعلى اليمين، اختر السماح بالإعدادات المقيّدة، ثم أعد المحاولة.</string>
+    <string name="pg_done">تم</string>
+    <string name="pb_title">حسب هاتفك</string>
+    <string name="pb_all_t">جميع الهواتف</string>
+    <string name="pb_all">1. فعّل خدمة إمكانية الوصول SENTIA. إذا رُفض: معلومات التطبيق، النقاط الثلاث، السماح بالإعدادات المقيّدة.\n2. إذا توقف رفع الصوت ثلاث مرات عن العمل: أوقف خدمة إمكانية الوصول ثم شغّلها من جديد.</string>
+    <string name="pb_xi_t">Redmi / Xiaomi (HyperOS)</string>
+    <string name="pb_xi">1. الإعدادات، التطبيقات، SENTIA، توفير البطارية: اختر دون قيود.\n2. الإعدادات، التطبيقات، الأذونات، التشغيل التلقائي: فعّل SENTIA.\n3. التطبيقات الأخيرة (المربع): اضغط مطولاً على SENTIA ثم المس القفل.</string>
+    <string name="pb_sa_t">Samsung (One UI)</string>
+    <string name="pb_sa">1. الإعدادات، التطبيقات، SENTIA، البطارية: اختر دون قيود.\n2. الإعدادات، البطارية، حدود الاستخدام في الخلفية: أوقف وضع التطبيقات غير المستخدمة في السكون، ثم أضف SENTIA إلى التطبيقات التي لا تنام أبداً.\n3. التطبيقات الأخيرة: المس أيقونة SENTIA ثم إبقاء مفتوح.\n4. إمكانية الوصول: الإعدادات، إمكانية الوصول، التطبيقات المثبتة، SENTIA.</string>
+</resources>

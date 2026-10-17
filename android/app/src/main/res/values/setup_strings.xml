@@ -4,11 +4,20 @@
     <string name="su_perm_msg">Je vais d\'abord vous demander trois autorisations : le micro, la caméra et les notifications. À chaque fenêtre, choisissez Autoriser.</string>
     <string name="su_perm_btn">Demander les autorisations</string>
     <string name="su_a11y_title">Réveil par les touches de volume</string>
-    <string name="su_a11y_msg">Dernière étape. Appuyez sur le bouton en bas de l\'écran. Dans la liste, cherchez SENTIA, touches de volume, puis activez-le et acceptez. Si le téléphone refuse, ouvrez les informations de l\'application SENTIA, touchez les trois points en haut à droite, choisissez Autoriser les paramètres restreints, puis recommencez. Ensuite, revenez ici.</string>
+    <string name="su_a11y_msg">Étape suivante. Appuyez sur le bouton en bas de l\'écran. Dans la liste, cherchez SENTIA, touches de volume, puis activez-le et acceptez. Si le téléphone refuse, ouvrez les informations de l\'application SENTIA, touchez les trois points en haut à droite, choisissez Autoriser les paramètres restreints, puis recommencez. Ensuite, revenez ici.</string>
     <string name="su_a11y_btn">Ouvrir les réglages d\'accessibilité</string>
     <string name="su_a11y_retry">Ce n\'est pas encore activé. Appuyez sur le bouton, cherchez SENTIA, touches de volume, et activez-le. Ou choisissez Plus tard.</string>
     <string name="su_later">Plus tard</string>
     <string name="su_ready_title">C\'est prêt</string>
     <string name="su_ready_msg">C\'est prêt. Pour me réveiller, appuyez trois fois vite sur Volume plus, ou secouez le téléphone.</string>
     <string name="su_ready_btn">Commencer</string>
+    <string name="su_overlay_title">Ouverture automatique</string>
+    <string name="su_overlay_msg">Étape suivante. Appuyez sur le bouton en bas. Dans la liste, touchez SENTIA, puis activez Afficher par-dessus les autres applications. Cela permet à SENTIA de s\'ouvrir quand vous la réveillez. Ensuite, revenez ici.</string>
+    <string name="su_overlay_btn">Ouvrir ce réglage</string>
+    <string name="su_overlay_retry">Ce n\'est pas encore activé. Appuyez sur le bouton, touchez SENTIA et activez l\'interrupteur. Ou choisissez Plus tard.</string>
+    <string name="su_battery_title">Rester actif</string>
+    <string name="su_battery_msg">Dernière étape. Appuyez sur le bouton, puis choisissez Autoriser. Cela évite que le téléphone endorme SENTIA. Ensuite, revenez ici.</string>
+    <string name="su_battery_btn">Autoriser SENTIA à rester actif</string>
+    <string name="su_battery_retry">Ce n\'est pas encore autorisé. Appuyez sur le bouton, puis choisissez Autoriser. Ou choisissez Plus tard.</string>
+    <string name="su_open_btn">Voir et régler les autorisations</string>
 </resources>

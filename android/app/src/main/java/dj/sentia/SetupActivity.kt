@@ -5,7 +5,9 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.os.Bundle
 import android.provider.Settings as AndroidSettings
 import android.view.View
@@ -36,7 +38,7 @@ class SetupActivity : AppCompatActivity() {
     private var wake = false
     private var opened = false
 
-    private enum class Phase { PERMISSIONS, ACCESSIBILITY, DONE }
+    private enum class Phase { PERMISSIONS, ACCESSIBILITY, OVERLAY, BATTERY, DONE }
 
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { afterPermissions() }
 
@@ -50,7 +52,7 @@ class SetupActivity : AppCompatActivity() {
         wake = intent.getBooleanExtra(AssistantActivity.EXTRA_WAKE, false)
         speaker = Speaker(this, AgentClient(this))
         main.setOnClickListener { onMain() }
-        later.setOnClickListener { finishSetup() }
+        later.setOnClickListener { skip() }
         showPermissions()
     }
 
@@ -72,6 +74,11 @@ class SetupActivity : AppCompatActivity() {
             .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_GENERIC)
             .any { it.resolveInfo.serviceInfo.packageName == packageName }
 
+    private fun overlayAllowed(): Boolean = Build.VERSION.SDK_INT < 23 || AndroidSettings.canDrawOverlays(this)
+
+    private fun batteryAllowed(): Boolean =
+        (getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)
+
     private fun showPermissions() {
         phase = Phase.PERMISSIONS
         title.setText(R.string.su_perm_title)
@@ -88,8 +95,29 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun afterPermissions() {
-        if (settings.isBlindish && !serviceEnabled()) showAccessibility() else showReady()
+        if (settings.isBlindish && !serviceEnabled()) showAccessibility() else afterAccessibility()
     }
+
+    private fun afterAccessibility() {
+        if (settings.isBlindish && !overlayAllowed()) showOverlay() else afterOverlay()
+    }
+
+    private fun afterOverlay() {
+        if (settings.isBlindish && !batteryAllowed()) showBattery() else showReady()
+    }
+
+    private fun showStep(p: Phase, title: Int, msg: Int, btn: Int) {
+        phase = p
+        this.title.setText(title)
+        message.setText(msg)
+        main.setText(btn)
+        later.setText(R.string.su_later)
+        later.visibility = View.VISIBLE
+        say(getString(msg))
+    }
+
+    private fun showOverlay() = showStep(Phase.OVERLAY, R.string.su_overlay_title, R.string.su_overlay_msg, R.string.su_overlay_btn)
+    private fun showBattery() = showStep(Phase.BATTERY, R.string.su_battery_title, R.string.su_battery_msg, R.string.su_battery_btn)
 
     private fun showAccessibility() {
         phase = Phase.ACCESSIBILITY
@@ -110,6 +138,15 @@ class SetupActivity : AppCompatActivity() {
         say(getString(R.string.su_ready_msg))
     }
 
+    private fun skip() {
+        speakJob?.cancel(); speaker.stop()
+        when (phase) {
+            Phase.ACCESSIBILITY -> afterAccessibility()
+            Phase.OVERLAY -> afterOverlay()
+            else -> showReady()
+        }
+    }
+
     private fun onMain() {
         when (phase) {
             Phase.PERMISSIONS -> if (missing().isEmpty()) afterPermissions() else permissions.launch(missing().toTypedArray())
@@ -119,6 +156,18 @@ class SetupActivity : AppCompatActivity() {
                 opened = true
                 startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS))
             }
+            Phase.OVERLAY -> {
+                speakJob?.cancel(); speaker.stop()
+                opened = true
+                try { startActivity(Intent(AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) }
+                catch (_: Exception) { startActivity(Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
+            }
+            Phase.BATTERY -> {
+                speakJob?.cancel(); speaker.stop()
+                opened = true
+                try { startActivity(Intent(AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) }
+                catch (_: Exception) { startActivity(Intent(AndroidSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+            }
             Phase.DONE -> finishSetup()
         }
     }
@@ -126,9 +175,13 @@ class SetupActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         // Retour de l'écran d'accessibilité : on revérifie.
-        if (phase == Phase.ACCESSIBILITY && opened) {
-            opened = false
-            if (serviceEnabled()) showReady() else say(getString(R.string.su_a11y_retry))
+        if (!opened) return
+        opened = false
+        when (phase) {
+            Phase.ACCESSIBILITY -> if (serviceEnabled()) afterAccessibility() else say(getString(R.string.su_a11y_retry))
+            Phase.OVERLAY -> if (overlayAllowed()) afterOverlay() else say(getString(R.string.su_overlay_retry))
+            Phase.BATTERY -> if (batteryAllowed()) showReady() else say(getString(R.string.su_battery_retry))
+            else -> {}
         }
     }
 
