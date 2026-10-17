@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cfg_title">إعداد SENTIA</string>
+    <string name="cfg_sub">تحقق من الأذونات اللازمة قبل البدء.</string>
+    <string name="cfg_r_bg">الخلفية</string>
+    <string name="cfg_r_overlay">العرض فوق التطبيقات الأخرى</string>
+    <string name="cfg_r_a11y">خدمة إمكانية الوصول</string>
+    <string name="cfg_r_battery">البطارية</string>
+    <string name="cfg_r_volume">أزرار الصوت</string>
+    <string name="cfg_on_bg">مفعّل</string>
+    <string name="cfg_on_overlay">مفعّل</string>
+    <string name="cfg_on_a11y">مفعّلة</string>
+    <string name="cfg_on_battery">دون قيود</string>
+    <string name="cfg_on_volume">مفعّلة</string>
+    <string name="cfg_todo">يجب التفعيل</string>
+    <string name="cfg_activate">تفعيل</string>
+    <string name="cfg_open">الإعدادات</string>
+    <string name="cfg_act_desc">تفعيل %1$s</string>
+    <string name="cfg_open_desc">فتح إعدادات %1$s</string>
+    <string name="cfg_sum_ok">تعمل SENTIA بالأذونات اللازمة.</string>
+    <string name="cfg_sum_missing">ينقص %1$d إذن. المس تفعيل في الأسطر المعنية.</string>
+    <string name="cfg_ready">SENTIA جاهزة.</string>
+    <string name="cfg_missing">ينقص: %1$s</string>
+    <string name="cfg_adv_title">أذونات متقدمة</string>
+    <string name="cfg_adv_btn">عرض الأذونات وضبطها</string>
+    <string name="cfg_mode_title">وضع الاستخدام</string>
+    <string name="cfg_mode_blind">👁️ وضع المكفوفين</string>
+    <string name="cfg_mode_deaf">👂 وضع الصم</string>
+    <string name="cfg_mode_both">👁️👂 وضع المكفوفين والصم</string>
+    <string name="cfg_mode_other">الوضع العادي</string>
+    <string name="cfg_mode_btn">تغيير الوضع</string>
+    <string name="cfg_params_title">الإعدادات</string>
+    <string name="cfg_diag_title">التشخيص</string>
+    <string name="cfg_check">تحقق من SENTIA</string>
+    <string name="cfg_save">حفظ وابدأ</string>
+</resources>

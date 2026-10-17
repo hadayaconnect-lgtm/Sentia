@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cfg_title">DEJINTA SENTIA</string>
+    <string name="cfg_sub">Hubi ogolaanshaha loo baahan yahay ka hor intaadan bilaabin.</string>
+    <string name="cfg_r_bg">Gadaasha</string>
+    <string name="cfg_r_overlay">Muuji kaga sarreeya abaabulada kale</string>
+    <string name="cfg_r_a11y">Adeegga helitaanka</string>
+    <string name="cfg_r_battery">Batari</string>
+    <string name="cfg_r_volume">Badhamada codka</string>
+    <string name="cfg_on_bg">La shiday</string>
+    <string name="cfg_on_overlay">La shiday</string>
+    <string name="cfg_on_a11y">La shiday</string>
+    <string name="cfg_on_battery">Xaddid la\'aan</string>
+    <string name="cfg_on_volume">La shiday</string>
+    <string name="cfg_todo">In la shido</string>
+    <string name="cfg_activate">Shid</string>
+    <string name="cfg_open">Goobaha</string>
+    <string name="cfg_act_desc">Shid %1$s</string>
+    <string name="cfg_open_desc">Fur goobaha %1$s</string>
+    <string name="cfg_sum_ok">SENTIA waxay ku shaqaynaysaa ogolaanshaha loo baahan yahay.</string>
+    <string name="cfg_sum_missing">%1$d ogolaansho ayaa maqan. Taabo Shid sadarrada khuseeya.</string>
+    <string name="cfg_ready">SENTIA waa diyaar.</string>
+    <string name="cfg_missing">Waa maqan yahay: %1$s</string>
+    <string name="cfg_adv_title">OGOLAANSHAHA HORUMARSAN</string>
+    <string name="cfg_adv_btn">Eeg oo deji ogolaanshaha</string>
+    <string name="cfg_mode_title">HABKA ISTICMAALKA</string>
+    <string name="cfg_mode_blind">👁️ Habka indhoolaha</string>
+    <string name="cfg_mode_deaf">👂 Habka dhegoolaha</string>
+    <string name="cfg_mode_both">👁️👂 Habka indhoolaha iyo dhegoolaha</string>
+    <string name="cfg_mode_other">Habka caadiga ah</string>
+    <string name="cfg_mode_btn">Beddel habka</string>
+    <string name="cfg_params_title">GOOBAHA</string>
+    <string name="cfg_diag_title">BAARITAAN</string>
+    <string name="cfg_check">Hubi SENTIA</string>
+    <string name="cfg_save">Kaydi oo bilow</string>
+</resources>

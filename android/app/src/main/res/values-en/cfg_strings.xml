@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cfg_title">SENTIA SETUP</string>
+    <string name="cfg_sub">Check the required permissions before you start.</string>
+    <string name="cfg_r_bg">Background</string>
+    <string name="cfg_r_overlay">Display over other apps</string>
+    <string name="cfg_r_a11y">Accessibility service</string>
+    <string name="cfg_r_battery">Battery</string>
+    <string name="cfg_r_volume">Volume keys</string>
+    <string name="cfg_on_bg">On</string>
+    <string name="cfg_on_overlay">On</string>
+    <string name="cfg_on_a11y">On</string>
+    <string name="cfg_on_battery">Unrestricted</string>
+    <string name="cfg_on_volume">On</string>
+    <string name="cfg_todo">To turn on</string>
+    <string name="cfg_activate">Turn on</string>
+    <string name="cfg_open">Settings</string>
+    <string name="cfg_act_desc">Turn on %1$s</string>
+    <string name="cfg_open_desc">Open settings for %1$s</string>
+    <string name="cfg_sum_ok">SENTIA is working with the required permissions.</string>
+    <string name="cfg_sum_missing">%1$d permission(s) missing. Touch Turn on on the lines concerned.</string>
+    <string name="cfg_ready">SENTIA is ready.</string>
+    <string name="cfg_missing">Missing: %1$s</string>
+    <string name="cfg_adv_title">ADVANCED PERMISSIONS</string>
+    <string name="cfg_adv_btn">View and set permissions</string>
+    <string name="cfg_mode_title">USAGE MODE</string>
+    <string name="cfg_mode_blind">👁️ Blind mode</string>
+    <string name="cfg_mode_deaf">👂 Deaf mode</string>
+    <string name="cfg_mode_both">👁️👂 Blind and deaf mode</string>
+    <string name="cfg_mode_other">Standard mode</string>
+    <string name="cfg_mode_btn">Change mode</string>
+    <string name="cfg_params_title">SETTINGS</string>
+    <string name="cfg_diag_title">DIAGNOSTIC</string>
+    <string name="cfg_check">Check SENTIA</string>
+    <string name="cfg_save">Save and start</string>
+</resources>

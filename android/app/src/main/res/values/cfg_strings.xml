@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cfg_title">CONFIGURATION DE SENTIA</string>
+    <string name="cfg_sub">Vérifiez les autorisations nécessaires avant de commencer.</string>
+    <string name="cfg_r_bg">Arrière-plan</string>
+    <string name="cfg_r_overlay">Affichage au-dessus des autres applications</string>
+    <string name="cfg_r_a11y">Service d\'accessibilité</string>
+    <string name="cfg_r_battery">Batterie</string>
+    <string name="cfg_r_volume">Touches de volume</string>
+    <string name="cfg_on_bg">Activé</string>
+    <string name="cfg_on_overlay">Activé</string>
+    <string name="cfg_on_a11y">Activé</string>
+    <string name="cfg_on_battery">Sans restriction</string>
+    <string name="cfg_on_volume">Activées</string>
+    <string name="cfg_todo">À activer</string>
+    <string name="cfg_activate">Activer</string>
+    <string name="cfg_open">Réglages</string>
+    <string name="cfg_act_desc">Activer %1$s</string>
+    <string name="cfg_open_desc">Ouvrir les réglages de %1$s</string>
+    <string name="cfg_sum_ok">SENTIA fonctionne avec les autorisations nécessaires.</string>
+    <string name="cfg_sum_missing">Il manque %1$d autorisation(s). Touchez Activer sur les lignes concernées.</string>
+    <string name="cfg_ready">SENTIA est prêt.</string>
+    <string name="cfg_missing">Il manque : %1$s</string>
+    <string name="cfg_adv_title">AUTORISATIONS AVANCÉES</string>
+    <string name="cfg_adv_btn">Voir et régler les autorisations</string>
+    <string name="cfg_mode_title">MODE D\'UTILISATION</string>
+    <string name="cfg_mode_blind">👁️ Mode aveugle</string>
+    <string name="cfg_mode_deaf">👂 Mode sourd</string>
+    <string name="cfg_mode_both">👁️👂 Mode aveugle et sourd</string>
+    <string name="cfg_mode_other">Mode standard</string>
+    <string name="cfg_mode_btn">Changer de mode</string>
+    <string name="cfg_params_title">PARAMÈTRES</string>
+    <string name="cfg_diag_title">DIAGNOSTIC</string>
+    <string name="cfg_check">Vérifier SENTIA</string>
+    <string name="cfg_save">Enregistrer et commencer</string>
+</resources>

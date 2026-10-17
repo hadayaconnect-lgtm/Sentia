@@ -6,43 +6,68 @@
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="20dp">
 
-        <TextView style="@style/Sentia.Text" android:text="@string/set_language" android:textStyle="bold"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-        <Spinner android:id="@+id/spLanguage" android:layout_width="match_parent" android:layout_height="56dp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/cfg_title" android:textColor="@color/yellow"
+            android:textSize="26sp" android:textStyle="bold" android:accessibilityHeading="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:text="@string/cfg_sub"
+            android:textColor="@color/white" android:textSize="18sp" />
+        <TextView android:id="@+id/cfgSummary" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:textSize="18sp" android:textStyle="bold"
+            android:accessibilityLiveRegion="polite" />
 
-        <TextView style="@style/Sentia.Text" android:text="@string/set_code" android:textStyle="bold"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" />
-        <EditText android:id="@+id/etCode" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:minHeight="56dp" android:inputType="textPassword" android:textColor="@color/white" android:textSize="20sp"
-            android:importantForAutofill="no" />
-
-        <CheckBox android:id="@+id/cbLive" style="@style/Sentia.Text"
+        <LinearLayout android:id="@+id/rowsContainer"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:minHeight="56dp" android:layout_marginTop="16dp" android:text="@string/set_live" />
+            android:layout_marginTop="12dp" android:orientation="vertical" android:background="@drawable/card_bg" />
 
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="28dp" android:layout_marginBottom="8dp" android:text="@string/cfg_adv_title"
+            android:textColor="@color/muted" android:textSize="15sp" android:textStyle="bold"
+            android:letterSpacing="0.08" android:accessibilityHeading="true" />
+        <Button android:id="@+id/btnAdvanced" style="@style/Widget.AppCompat.Button.Borderless"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:minHeight="56dp" android:text="@string/cfg_adv_btn" android:background="@drawable/btn_outline"
+            android:textColor="@color/yellow" android:textSize="18sp" android:textStyle="bold" android:textAllCaps="false" />
+        <Button android:id="@+id/btnHyperOs" style="@style/Widget.AppCompat.Button.Borderless"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:minHeight="56dp" android:text="@string/set_app_perms"
+            android:background="@drawable/btn_outline" android:textColor="@color/yellow"
+            android:textSize="16sp" android:textAllCaps="false" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="28dp" android:layout_marginBottom="8dp" android:text="@string/cfg_params_title"
+            android:textColor="@color/muted" android:textSize="15sp" android:textStyle="bold"
+            android:letterSpacing="0.08" android:accessibilityHeading="true" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp" android:background="@drawable/card_bg">
+            <TextView style="@style/Sentia.Text" android:text="@string/set_language" android:textStyle="bold"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <Spinner android:id="@+id/spLanguage" android:layout_width="match_parent" android:layout_height="56dp" />
+            <TextView style="@style/Sentia.Text" android:text="@string/set_code" android:textStyle="bold"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" />
+            <EditText android:id="@+id/etCode" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:minHeight="56dp" android:inputType="textPassword" android:textColor="@color/white" android:textSize="20sp"
+                android:importantForAutofill="no" />
+            <CheckBox android:id="@+id/cbLive" style="@style/Sentia.Text"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:minHeight="56dp" android:layout_marginTop="8dp" android:text="@string/set_live" />
+        </LinearLayout>
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="28dp" android:layout_marginBottom="8dp" android:text="@string/cfg_diag_title"
+            android:textColor="@color/muted" android:textSize="15sp" android:textStyle="bold"
+            android:letterSpacing="0.08" android:accessibilityHeading="true" />
         <TextView android:id="@+id/diagStatus" style="@style/Sentia.Text"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" android:textSize="15sp" />
-        <Button android:id="@+id/btnBattery" style="@style/Sentia.BigButton"
+            android:padding="16dp" android:background="@drawable/card_bg" android:textSize="15sp" />
+
+        <Button android:id="@+id/btnCheck" style="@style/Widget.AppCompat.Button.Borderless"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" android:text="@string/set_battery" android:textSize="18sp" />
-        <Button android:id="@+id/btnOverlay" style="@style/Sentia.BigButton"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" android:text="@string/set_overlay" android:textSize="18sp" />
-        <Button android:id="@+id/btnAppPerms" style="@style/Sentia.BigButton"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" android:text="@string/set_app_perms" android:textSize="18sp" />
-        <Button android:id="@+id/btnA11y" style="@style/Sentia.BigButton"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" android:text="@string/set_accessibility" android:textSize="18sp" />
-        <Button android:id="@+id/btnSetup" style="@style/Sentia.BigButton"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" android:text="@string/su_open_btn" android:textSize="18sp" />
-        <Button android:id="@+id/btnProfile" style="@style/Sentia.BigButton"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" android:text="@string/set_change_profile" android:textSize="18sp" />
+            android:layout_marginTop="28dp" android:minHeight="64dp" android:text="@string/cfg_check"
+            android:background="@drawable/btn_outline" android:textColor="@color/yellow"
+            android:textSize="20sp" android:textStyle="bold" android:textAllCaps="false" />
         <Button android:id="@+id/btnSave" style="@style/Sentia.BigButton"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" android:text="@string/set_save" />
+            android:layout_marginTop="12dp" android:text="@string/cfg_save" />
     </LinearLayout>
 </ScrollView>
