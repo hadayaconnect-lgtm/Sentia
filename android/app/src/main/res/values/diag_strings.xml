@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dg_perf">Performances</string>
+    <string name="dg_system">Système</string>
+    <string name="dg_tech">Détails techniques</string>
+</resources>

@@ -33,4 +33,5 @@
     <string name="cfg_diag_title">التشخيص</string>
     <string name="cfg_check">تحقق من SENTIA</string>
     <string name="cfg_save">حفظ وابدأ</string>
+    <string name="cfg_live">محادثة مباشرة</string>
 </resources>

@@ -33,7 +33,13 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var spLanguage: Spinner
     private lateinit var etCode: EditText
-    private lateinit var diagStatus: TextView
+    private lateinit var diagState: TextView
+    private lateinit var diagStateSub: TextView
+    private lateinit var diagPerfBody: TextView
+    private lateinit var diagSysBody: TextView
+    private lateinit var diagTech: TextView
+    private lateinit var btnTech: Button
+    private var techOpen = false
     private class Row(
         val dot: TextView, val state: TextView, val text: View, val action: Button,
         val title: Int, val on: Int, val ok: () -> Boolean, val fix: () -> Unit, val open: () -> Unit,
@@ -42,7 +48,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var cfgSummary: TextView
     private val ui = Handler(Looper.getMainLooper())
     private val refresher = object : Runnable {
-        override fun run() { refreshDiag(); refreshRows(); ui.postDelayed(this, 1500) }
+        override fun run() { refreshDiag(refreshRows()); ui.postDelayed(this, 1500) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,7 +58,14 @@ class SettingsActivity : AppCompatActivity() {
 
         spLanguage = findViewById(R.id.spLanguage)
         etCode = findViewById(R.id.etCode)
-        diagStatus = findViewById(R.id.diagStatus)
+        diagState = findViewById(R.id.diagState)
+        diagStateSub = findViewById(R.id.diagStateSub)
+        diagPerfBody = findViewById(R.id.diagPerfBody)
+        diagSysBody = findViewById(R.id.diagSysBody)
+        diagTech = findViewById(R.id.diagTech)
+        btnTech = findViewById(R.id.btnTech)
+        btnTech.setOnClickListener { techOpen = !techOpen; applyTech() }
+        applyTech()
 
         spLanguage.adapter = adapter(listOf(R.string.lang_auto, R.string.lang_fr, R.string.lang_en, R.string.lang_so, R.string.lang_ar))
         val s = settings
@@ -153,6 +166,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun verify() {
         try { ShakeService.start(this) } catch (_: Exception) {}
         val missing = refreshRows()
+        refreshDiag(missing)
         val msg = if (missing.isEmpty()) getString(R.string.cfg_ready)
         else getString(R.string.cfg_missing, missing.joinToString(", ") { getString(it.title) })
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
@@ -176,27 +190,78 @@ class SettingsActivity : AppCompatActivity() {
         super.onPause()
     }
 
-    /** État réel de la veille : de quoi savoir pourquoi la secousse ne réveille pas (ou si c'est Android qui bloque). */
-    private fun refreshDiag() {
+    private fun applyTech() {
+        val label = getString(R.string.dg_tech)
+        btnTech.text = label + if (techOpen) "  ▾" else "  ▸"
+        btnTech.contentDescription = label + ", " + if (techOpen) "déplié" else "replié"
+        diagTech.visibility = if (techOpen) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Diagnostic : état global (prêt / configuration nécessaire / erreur), puis performances et système lisibles.
+     * Les valeurs viennent des mêmes données qu'avant (rapport enregistré par la conversation, états Android) ;
+     * les libellés très techniques restent intégralement dans « Détails techniques ».
+     */
+    private fun refreshDiag(missing: List<Row>) {
         val s = settings
         val f = java.text.SimpleDateFormat("dd/MM HH:mm:ss", java.util.Locale.getDefault())
         fun at(t: Long) = if (t == 0L) "jamais" else f.format(java.util.Date(t))
-        val overlay = if (Build.VERSION.SDK_INT >= 23) AndroidSettings.canDrawOverlays(this) else true
-        val battery = (getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)
-        val a11y = (getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager)
-            .getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_GENERIC)
-            .any { it.resolveInfo.serviceInfo.packageName == packageName }
-        diagStatus.text = buildString {
-            append("Diagnostic du réveil et des performances\n")
+        val overlay = overlayOk()
+        val battery = batteryOk()
+        val a11y = a11yEnabled()
+        val perf = s.diagPerf
+        val lines = perf.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        fun value(match: (String) -> Boolean) =
+            lines.firstOrNull(match)?.substringAfterLast(" : ", "")?.trim()?.takeIf { it.isNotEmpty() }
+        val connexion = value { it.startsWith("Connexion") }
+        val photo = value { it.contains("→ photo envoyée") }
+        val voix = value { it.contains("début de la voix") }
+        val echo = value { it.startsWith("Annulation d'écho") }
+        val liveError = perf.startsWith("Conversation en direct indisponible")
+        val hasError = s.diagServiceError.isNotEmpty() || liveError
+
+        // 1) État global
+        val green = ContextCompat.getColor(this, R.color.ok_green)
+        val red = ContextCompat.getColor(this, R.color.todo_red)
+        val orange = ContextCompat.getColor(this, R.color.warn_orange)
+        val (dot, color, title, sub) = when {
+            hasError -> Quad("🔴", red, "Une erreur empêche SENTIA de fonctionner",
+                if (s.diagServiceError.isNotEmpty()) "Erreur de la veille : " + s.diagServiceError else lines.firstOrNull().orEmpty())
+            missing.isNotEmpty() -> Quad("🟠", orange, "Configuration nécessaire",
+                "Il manque : " + missing.joinToString(", ") { getString(it.title) } + ".")
+            else -> Quad("🟢", green, "SENTIA est prêt", "Toutes les autorisations nécessaires sont activées.")
+        }
+        diagState.text = "$dot $title"
+        diagState.setTextColor(color)
+        diagState.contentDescription = "État : $title"
+        diagStateSub.text = sub
+
+        // 2) Performances (seulement ce qui a réellement été mesuré)
+        val perfLines = listOfNotNull(
+            connexion?.let { "• Connexion : $it" },
+            photo?.let { "• Photo envoyée : $it" },
+            voix?.let { "• Début de la voix : $it" },
+        )
+        diagPerfBody.text = if (perfLines.isEmpty()) "Aucune mesure pour le moment." else perfLines.joinToString("\n")
+
+        // 3) Système
+        diagSysBody.text = listOfNotNull(
+            "• Accessibilité : " + if (a11y) "Activée" else "Désactivée",
+            "• Affichage au-dessus des apps : " + if (overlay) "Autorisé" else "Non autorisé",
+            "• Batterie : " + if (battery) "Sans restriction" else "Restreinte",
+            echo?.let { "• Annulation d'écho : " + if (it.startsWith("oui")) "Activée" else "Désactivée" },
+        ).joinToString("\n")
+
+        // 4) Détails techniques (données brutes d'origine, rien n'est supprimé)
+        diagTech.text = buildString {
             append("• Veille démarrée : ").append(at(s.diagServiceAt)).append('\n')
             if (s.diagServiceError.isNotEmpty()) append("• Erreur de la veille : ").append(s.diagServiceError).append('\n')
             append("• Dernier réveil : ").append(s.diagWake.ifEmpty { "aucun" }).append('\n')
-            append("• Dernière analyse : ").append(if (s.diagPerf.isEmpty()) "aucune" else "\n" + s.diagPerf).append('\n')
-            append("• Service d'accessibilité : ").append(if (a11y) "activé" else "désactivé").append('\n')
-            append("• Affichage par-dessus les autres apps : ").append(if (overlay) "autorisé" else "NON autorisé").append('\n')
-            append("• Batterie sans restriction : ").append(if (battery) "oui" else "non")
+            append("• Dernière analyse : ").append(if (perf.isEmpty()) "aucune" else "\n" + perf)
         }
     }
+
+    private data class Quad(val a: String, val b: Int, val c: String, val d: String)
 
     private fun openAppDetails() {
         startActivity(Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))

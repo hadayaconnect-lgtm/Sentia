@@ -3,4 +3,5 @@
     <color name="ok_green">#5BE37D</color>
     <color name="todo_red">#FF8A80</color>
     <color name="muted">#B8B8B8</color>
+    <color name="warn_orange">#FFB74D</color>
 </resources>

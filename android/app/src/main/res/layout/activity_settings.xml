@@ -50,16 +50,41 @@
                 android:importantForAutofill="no" />
             <CheckBox android:id="@+id/cbLive" style="@style/Sentia.Text"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:minHeight="56dp" android:layout_marginTop="8dp" android:text="@string/set_live" />
+                android:minHeight="56dp" android:layout_marginTop="8dp" android:text="@string/cfg_live" />
         </LinearLayout>
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="28dp" android:layout_marginBottom="8dp" android:text="@string/cfg_diag_title"
             android:textColor="@color/muted" android:textSize="15sp" android:textStyle="bold"
             android:letterSpacing="0.08" android:accessibilityHeading="true" />
-        <TextView android:id="@+id/diagStatus" style="@style/Sentia.Text"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:padding="16dp" android:background="@drawable/card_bg" android:textSize="15sp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp" android:background="@drawable/card_bg">
+            <TextView android:id="@+id/diagState" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="22sp" android:textStyle="bold" android:accessibilityLiveRegion="polite" />
+            <TextView android:id="@+id/diagStateSub" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" android:textColor="@color/white" android:textSize="17sp" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="20dp" android:text="@string/dg_perf" android:textColor="@color/yellow"
+                android:textSize="18sp" android:textStyle="bold" android:accessibilityHeading="true" />
+            <TextView android:id="@+id/diagPerfBody" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" android:textColor="@color/white" android:textSize="17sp" android:lineSpacingExtra="3dp" />
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="20dp" android:text="@string/dg_system" android:textColor="@color/yellow"
+                android:textSize="18sp" android:textStyle="bold" android:accessibilityHeading="true" />
+            <TextView android:id="@+id/diagSysBody" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" android:textColor="@color/white" android:textSize="17sp" android:lineSpacingExtra="3dp" />
+
+            <Button android:id="@+id/btnTech" style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" android:minHeight="52dp"
+                android:background="@drawable/btn_outline" android:textColor="@color/yellow"
+                android:textSize="17sp" android:textStyle="bold" android:textAllCaps="false" />
+            <TextView android:id="@+id/diagTech" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" android:textColor="@color/muted" android:textSize="15sp"
+                android:lineSpacingExtra="3dp" android:visibility="gone" />
+        </LinearLayout>
 
         <Button android:id="@+id/btnCheck" style="@style/Widget.AppCompat.Button.Borderless"
             android:layout_width="match_parent" android:layout_height="wrap_content"

@@ -33,4 +33,5 @@
     <string name="cfg_diag_title">DIAGNOSTIC</string>
     <string name="cfg_check">Check SENTIA</string>
     <string name="cfg_save">Save and start</string>
+    <string name="cfg_live">Live conversation</string>
 </resources>
